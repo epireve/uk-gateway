@@ -95,19 +95,6 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
     };
   }, []);
 
-  // Function to format log level with appropriate styling
-  const getLogLevelStyles = (level: string) => {
-    switch (level.toLowerCase()) {
-      case 'error':
-        return 'text-red-600 font-medium';
-      case 'warning':
-        return 'text-amber-600 font-medium';
-      case 'info':
-      default:
-        return 'text-blue-600 font-medium';
-    }
-  };
-
   // Function to format timestamp
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -117,22 +104,30 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
   return (
     <div className="mb-8">
       <h2 className="govuk-heading-m">Data Enrichment Overview</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-6 rounded-md shadow-sm border border-gray-200">
-          <div className="text-2xl font-bold">{stats.total}</div>
-          <div className="text-gray-500">Total Companies</div>
+      <div className="govuk-grid-row mb-6">
+        <div className="govuk-grid-column-one-quarter">
+          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0">
+            <div className="govuk-panel__title govuk-!-font-size-27">{stats.total}</div>
+            <div className="govuk-panel__body govuk-!-font-size-16">Total Companies</div>
+          </div>
         </div>
-        <div className="bg-white p-6 rounded-md shadow-sm border border-gray-200">
-          <div className="text-2xl font-bold text-green-600">{stats.enriched}</div>
-          <div className="text-gray-500">Enriched ({Math.round(stats.enriched / stats.total * 100)}%)</div>
+        <div className="govuk-grid-column-one-quarter">
+          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-background-colour-green">
+            <div className="govuk-panel__title govuk-!-font-size-27">{stats.enriched}</div>
+            <div className="govuk-panel__body govuk-!-font-size-16">Enriched ({Math.round(stats.enriched / stats.total * 100)}%)</div>
+          </div>
         </div>
-        <div className="bg-white p-6 rounded-md shadow-sm border border-gray-200">
-          <div className="text-2xl font-bold text-yellow-600">{stats.remaining}</div>
-          <div className="text-gray-500">Remaining ({Math.round(stats.remaining / stats.total * 100)}%)</div>
+        <div className="govuk-grid-column-one-quarter">
+          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-background-colour-yellow">
+            <div className="govuk-panel__title govuk-!-font-size-27">{stats.remaining}</div>
+            <div className="govuk-panel__body govuk-!-font-size-16">Remaining ({Math.round(stats.remaining / stats.total * 100)}%)</div>
+          </div>
         </div>
-        <div className="bg-white p-6 rounded-md shadow-sm border border-gray-200">
-          <div className="text-2xl font-bold text-red-600">{stats.failed}</div>
-          <div className="text-gray-500">Failed</div>
+        <div className="govuk-grid-column-one-quarter">
+          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-background-colour-red">
+            <div className="govuk-panel__title govuk-!-font-size-27">{stats.failed}</div>
+            <div className="govuk-panel__body govuk-!-font-size-16">Failed</div>
+          </div>
         </div>
       </div>
       
@@ -144,43 +139,47 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
       
       {/* Active Job Status */}
       {activeJob && (
-        <div className="mb-6 p-4 border border-blue-200 bg-blue-50 rounded-md">
-          <h3 className="text-lg font-medium mb-2">Active Enrichment Process</h3>
-          <p className="mb-2">
-            <span className="font-medium">Type:</span> {activeJob.job_type === 'reprocess_failed' ? 'Reprocessing Failed Items' : 'Processing Remaining Items'}
+        <div className="govuk-inset-text govuk-!-margin-bottom-6">
+          <h3 className="govuk-heading-s govuk-!-margin-bottom-2">Active Enrichment Process</h3>
+          <p className="govuk-body-s govuk-!-margin-bottom-2">
+            <span className="govuk-!-font-weight-bold">Type:</span> {activeJob.job_type === 'reprocess_failed' ? 'Reprocessing Failed Items' : 'Processing Remaining Items'}
           </p>
-          <p className="mb-2">
-            <span className="font-medium">Status:</span> {activeJob.status === 'pending' ? 'Pending' : 'Processing'}
+          <p className="govuk-body-s govuk-!-margin-bottom-2">
+            <span className="govuk-!-font-weight-bold">Status:</span> {activeJob.status === 'pending' ? 'Pending' : 'Processing'}
           </p>
-          <p className="mb-2">
-            <span className="font-medium">Started:</span> {activeJob.started_at ? new Date(activeJob.started_at).toLocaleString() : 'Not started yet'}
+          <p className="govuk-body-s govuk-!-margin-bottom-2">
+            <span className="govuk-!-font-weight-bold">Started:</span> {activeJob.started_at ? new Date(activeJob.started_at).toLocaleString() : 'Not started yet'}
           </p>
           {activeJob.total_items !== null && activeJob.total_items > 0 && (
-            <p className="mb-2">
-              <span className="font-medium">Total Items:</span> {activeJob.total_items}
+            <p className="govuk-body-s govuk-!-margin-bottom-2">
+              <span className="govuk-!-font-weight-bold">Total Items:</span> {activeJob.total_items}
             </p>
           )}
           {activeJob.items_processed > 0 && (
-            <p className="mb-2">
-              <span className="font-medium">Items Processed:</span> {activeJob.items_processed}
+            <p className="govuk-body-s govuk-!-margin-bottom-2">
+              <span className="govuk-!-font-weight-bold">Items Processed:</span> {activeJob.items_processed}
             </p>
           )}
           {activeJob.items_failed > 0 && (
-            <p className="mb-2">
-              <span className="font-medium">Items Failed:</span> {activeJob.items_failed}
+            <p className="govuk-body-s govuk-!-margin-bottom-2">
+              <span className="govuk-!-font-weight-bold">Items Failed:</span> {activeJob.items_failed}
             </p>
           )}
           
           {/* Add progress bar for active job */}
           {activeJob.progress_percentage !== null && activeJob.progress_percentage > 0 && (
-            <div className="mt-4">
-              <div className="w-full bg-blue-100 rounded-full h-2.5 mb-1">
+            <div className="govuk-!-margin-top-4">
+              <div className="govuk-progress-bar">
                 <div 
-                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
+                  className="govuk-progress-bar__fill" 
                   style={{ width: `${activeJob.progress_percentage}%` }}
+                  role="progressbar"
+                  aria-valuenow={activeJob.progress_percentage}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
                 ></div>
               </div>
-              <p className="text-sm text-right text-blue-700">{activeJob.progress_percentage}% Complete</p>
+              <p className="govuk-body-s govuk-!-margin-top-1 govuk-!-text-align-right">{activeJob.progress_percentage}% Complete</p>
             </div>
           )}
         </div>
@@ -198,7 +197,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
         {showLogs && (
           <button 
             onClick={fetchLogsAndJobStatus} 
-            className="govuk-button govuk-button--secondary ml-2"
+            className="govuk-button govuk-button--secondary govuk-!-margin-left-2"
             disabled={loading}
           >
             Refresh Logs
@@ -208,7 +207,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
         {/* Add a separate button to refresh stats */}
         <button 
           onClick={fetchStats} 
-          className="govuk-button govuk-button--secondary ml-2"
+          className="govuk-button govuk-button--secondary govuk-!-margin-left-2"
           disabled={loading}
         >
           Refresh Stats
@@ -224,43 +223,33 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
           
           {loading ? (
             <div className="p-6 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-govuk-blue mx-auto"></div>
-              <p className="mt-2">Loading logs...</p>
+              <div className="govuk-loader"></div>
+              <p className="govuk-body govuk-!-margin-top-2">Loading logs...</p>
             </div>
           ) : logs.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">
+            <div className="p-6 text-center govuk-!-text-colour-secondary">
               No logs available. Logs will appear here when an enrichment process is running.
             </div>
           ) : (
-            <div className="overflow-y-auto max-h-96">
-              <table className="w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Time
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Level
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Message
-                    </th>
+            <div className="govuk-!-overflow-y-auto" style={{ maxHeight: '24rem' }}>
+              <table className="govuk-table">
+                <thead className="govuk-table__head">
+                  <tr className="govuk-table__row">
+                    <th scope="col" className="govuk-table__header">Time</th>
+                    <th scope="col" className="govuk-table__header">Level</th>
+                    <th scope="col" className="govuk-table__header">Message</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="govuk-table__body">
                   {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatTimestamp(log.timestamp)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={getLogLevelStyles(log.log_level)}>
+                    <tr key={log.id} className="govuk-table__row">
+                      <td className="govuk-table__cell">{formatTimestamp(log.timestamp)}</td>
+                      <td className="govuk-table__cell">
+                        <span className={`govuk-tag ${log.log_level.toLowerCase() === 'error' ? 'govuk-tag--red' : log.log_level.toLowerCase() === 'warning' ? 'govuk-tag--yellow' : 'govuk-tag--blue'}`}>
                           {log.log_level.toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-pre-wrap">
-                        {log.message}
-                      </td>
+                      <td className="govuk-table__cell govuk-!-white-space-pre-wrap">{log.message}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -271,7 +260,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
           {hasMoreLogs && (
             <div className="p-3 bg-gray-50 border-t border-gray-200 text-center">
               <button 
-                className="text-blue-600 hover:text-blue-800 font-medium" 
+                className="govuk-button govuk-button--secondary" 
                 onClick={fetchLogsAndJobStatus}
               >
                 Load more logs
@@ -409,36 +398,46 @@ const FailedEnrichmentsTab: React.FC = () => {
 
       {/* Stats summary cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-            <div className="text-lg font-bold text-red-600">{stats.failed}</div>
-            <div className="text-gray-500">Failed Enrichments</div>
-          </div>
-          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-            <div className="text-lg font-bold">{stats.total}</div>
-            <div className="text-gray-500">Total Companies</div>
-          </div>
-          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-            <div className="text-lg font-bold">
-              {stats.total > 0 ? Math.round((stats.failed / stats.total) * 100) : 0}%
+        <div className="govuk-grid-row mb-6">
+          <div className="govuk-grid-column-one-third">
+            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-background-colour-red">
+              <div className="govuk-panel__title govuk-!-font-size-27">{stats.failed}</div>
+              <div className="govuk-panel__body govuk-!-font-size-16">Failed Enrichments</div>
             </div>
-            <div className="text-gray-500">Failed Percentage</div>
+          </div>
+          <div className="govuk-grid-column-one-third">
+            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0">
+              <div className="govuk-panel__title govuk-!-font-size-27">{stats.total}</div>
+              <div className="govuk-panel__body govuk-!-font-size-16">Total Companies</div>
+            </div>
+          </div>
+          <div className="govuk-grid-column-one-third">
+            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0">
+              <div className="govuk-panel__title govuk-!-font-size-27">
+                {stats.total > 0 ? Math.round((stats.failed / stats.total) * 100) : 0}%
+              </div>
+              <div className="govuk-panel__body govuk-!-font-size-16">Failed Percentage</div>
+            </div>
           </div>
         </div>
       )}
 
       {activeJob && activeJob.job_type === 'reprocess_failed' && (
-        <div className="p-4 mb-4 bg-blue-50 border border-blue-200 rounded">
-          <p className="font-medium">Reprocessing failed enrichments</p>
+        <div className="govuk-inset-text govuk-!-margin-bottom-4">
+          <p className="govuk-body-s govuk-!-font-weight-bold govuk-!-margin-bottom-2">Reprocessing failed enrichments</p>
           {activeJob.progress_percentage !== null && (
-            <div className="mt-2">
-              <div className="w-full bg-blue-100 rounded-full h-2.5 mb-1">
+            <div className="govuk-!-margin-top-2">
+              <div className="govuk-progress-bar">
                 <div 
-                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
+                  className="govuk-progress-bar__fill" 
                   style={{ width: `${activeJob.progress_percentage}%` }}
+                  role="progressbar"
+                  aria-valuenow={activeJob.progress_percentage}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
                 ></div>
               </div>
-              <p className="text-sm text-right text-blue-700">
+              <p className="govuk-body-s govuk-!-margin-top-1 govuk-!-text-align-right">
                 {activeJob.progress_percentage}% Complete
                 {activeJob.items_processed > 0 && ` (${activeJob.items_processed} processed)`}
                 {activeJob.total_items && ` of ${activeJob.total_items} items`}
@@ -449,57 +448,38 @@ const FailedEnrichmentsTab: React.FC = () => {
       )}
 
       {message.text && (
-        <div className={`p-4 mb-4 rounded ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+        <div className={`govuk-inset-text govuk-!-margin-bottom-4 ${message.type === 'error' ? 'govuk-inset-text--error' : 'govuk-inset-text--success'}`}>
           {message.text}
         </div>
       )}
 
       {loading ? (
         <div className="flex justify-center my-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-govuk-blue"></div>
+          <div className="govuk-loader"></div>
         </div>
       ) : failedItems.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded">
+        <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-6 govuk-!-margin-bottom-0 govuk-!-background-colour-light-grey govuk-!-text-colour-secondary">
           No failed enrichments found
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-            <table className="w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Company Name
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Retry Count
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Last Error
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Last Attempt
-                  </th>
+          <div className="govuk-!-margin-bottom-6">
+            <table className="govuk-table">
+              <thead className="govuk-table__head">
+                <tr className="govuk-table__row">
+                  <th scope="col" className="govuk-table__header">Company Name</th>
+                  <th scope="col" className="govuk-table__header">Retry Count</th>
+                  <th scope="col" className="govuk-table__header">Last Error</th>
+                  <th scope="col" className="govuk-table__header">Last Attempt</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {failedItems.map((item, index) => (
-                  <tr 
-                    key={item.id} 
-                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors duration-150 ease-in-out`}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {item.company_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.retry_count}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {item.last_error?.substring(0, 50)}...
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(item.updated_at).toLocaleString()}
-                    </td>
+              <tbody className="govuk-table__body">
+                {failedItems.map((item) => (
+                  <tr key={item.id} className="govuk-table__row">
+                    <td className="govuk-table__cell govuk-!-font-weight-bold">{item.company_name}</td>
+                    <td className="govuk-table__cell">{item.retry_count}</td>
+                    <td className="govuk-table__cell govuk-table__cell--truncate">{item.last_error?.substring(0, 50)}...</td>
+                    <td className="govuk-table__cell">{new Date(item.updated_at).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -507,27 +487,46 @@ const FailedEnrichmentsTab: React.FC = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex justify-center mt-6">
-              <div className="inline-flex rounded-md shadow-sm">
-                <button
-                  className="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Previous
-                </button>
-                <span className="relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 bg-white text-sm font-medium text-gray-700">
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  className="relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={page === totalPages}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Next
-                </button>
+            <nav className="govuk-pagination" role="navigation" aria-label="Pagination">
+              <div className="govuk-pagination__prev">
+                <a className={`govuk-pagination__link ${page === 1 ? 'govuk-pagination__link--disabled' : ''}`} 
+                   href="#prev" 
+                   onClick={(e) => { e.preventDefault(); if (page > 1) setPage(page - 1); }}
+                   rel="prev">
+                  <svg className="govuk-pagination__icon govuk-pagination__icon--prev" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true">
+                    <path d="m6.5938-0.0078125-6.7266 6.7266 6.7441 6.4062 1.377-1.449-4.1856-3.9768h12.896v-2h-12.984l4.2931-4.293-1.414-1.414z"></path>
+                  </svg>
+                  <span className="govuk-pagination__link-title">Previous</span>
+                </a>
               </div>
-            </div>
+              <ul className="govuk-pagination__list">
+                {Array.from({length: Math.min(totalPages, 5)}, (_, i) => {
+                  const pageNumber = i + 1;
+                  return (
+                    <li key={pageNumber} className="govuk-pagination__item">
+                      <a className={`govuk-pagination__link ${pageNumber === page ? 'govuk-pagination__link--current' : ''}`} 
+                         href={`#page-${pageNumber}`}
+                         onClick={(e) => { e.preventDefault(); setPage(pageNumber); }}
+                         aria-current={pageNumber === page ? 'page' : undefined}
+                         aria-label={`Page ${pageNumber}`}>
+                        {pageNumber}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="govuk-pagination__next">
+                <a className={`govuk-pagination__link ${page === totalPages ? 'govuk-pagination__link--disabled' : ''}`}
+                   href="#next"
+                   onClick={(e) => { e.preventDefault(); if (page < totalPages) setPage(page + 1); }}
+                   rel="next">
+                  <span className="govuk-pagination__link-title">Next</span>
+                  <svg className="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true">
+                    <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>
+                  </svg>
+                </a>
+              </div>
+            </nav>
           )}
         </>
       )}
@@ -672,36 +671,46 @@ const RemainingItemsTab: React.FC = () => {
 
       {/* Stats summary cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-            <div className="text-lg font-bold text-yellow-600">{stats.remaining}</div>
-            <div className="text-gray-500">Remaining Items</div>
-          </div>
-          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-            <div className="text-lg font-bold">{stats.total}</div>
-            <div className="text-gray-500">Total Companies</div>
-          </div>
-          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-            <div className="text-lg font-bold">
-              {stats.total > 0 ? Math.round((stats.remaining / stats.total) * 100) : 0}%
+        <div className="govuk-grid-row mb-6">
+          <div className="govuk-grid-column-one-third">
+            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-background-colour-yellow">
+              <div className="govuk-panel__title govuk-!-font-size-27">{stats.remaining}</div>
+              <div className="govuk-panel__body govuk-!-font-size-16">Remaining Items</div>
             </div>
-            <div className="text-gray-500">Remaining Percentage</div>
+          </div>
+          <div className="govuk-grid-column-one-third">
+            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0">
+              <div className="govuk-panel__title govuk-!-font-size-27">{stats.total}</div>
+              <div className="govuk-panel__body govuk-!-font-size-16">Total Companies</div>
+            </div>
+          </div>
+          <div className="govuk-grid-column-one-third">
+            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0">
+              <div className="govuk-panel__title govuk-!-font-size-27">
+                {stats.total > 0 ? Math.round((stats.remaining / stats.total) * 100) : 0}%
+              </div>
+              <div className="govuk-panel__body govuk-!-font-size-16">Remaining Percentage</div>
+            </div>
           </div>
         </div>
       )}
 
       {activeJob && activeJob.job_type === 'enrich_remaining' && (
-        <div className="p-4 mb-4 bg-blue-50 border border-blue-200 rounded">
-          <p className="font-medium">Enrichment process is currently running</p>
+        <div className="govuk-inset-text govuk-!-margin-bottom-4">
+          <p className="govuk-body-s govuk-!-font-weight-bold govuk-!-margin-bottom-2">Enrichment process is currently running</p>
           {activeJob.progress_percentage !== null && (
-            <div className="mt-2">
-              <div className="w-full bg-blue-100 rounded-full h-2.5 mb-1">
+            <div className="govuk-!-margin-top-2">
+              <div className="govuk-progress-bar">
                 <div 
-                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
+                  className="govuk-progress-bar__fill" 
                   style={{ width: `${activeJob.progress_percentage}%` }}
+                  role="progressbar"
+                  aria-valuenow={activeJob.progress_percentage}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
                 ></div>
               </div>
-              <p className="text-sm text-right text-blue-700">
+              <p className="govuk-body-s govuk-!-margin-top-1 govuk-!-text-align-right">
                 {activeJob.progress_percentage}% Complete
                 {activeJob.items_processed > 0 && ` (${activeJob.items_processed} processed)`}
                 {activeJob.total_items && ` of ${activeJob.total_items} items`}
@@ -712,57 +721,38 @@ const RemainingItemsTab: React.FC = () => {
       )}
 
       {message.text && (
-        <div className={`p-4 mb-4 rounded ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+        <div className={`govuk-inset-text govuk-!-margin-bottom-4 ${message.type === 'error' ? 'govuk-inset-text--error' : 'govuk-inset-text--success'}`}>
           {message.text}
         </div>
       )}
 
       {loading ? (
         <div className="flex justify-center my-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-govuk-blue"></div>
+          <div className="govuk-loader"></div>
         </div>
       ) : remainingItems.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded">
+        <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-6 govuk-!-margin-bottom-0 govuk-!-background-colour-light-grey govuk-!-text-colour-secondary">
           No remaining items found
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-            <table className="w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Company Name
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Town/City
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    County
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type & Rating
-                  </th>
+          <div className="govuk-!-margin-bottom-6">
+            <table className="govuk-table">
+              <thead className="govuk-table__head">
+                <tr className="govuk-table__row">
+                  <th scope="col" className="govuk-table__header">Company Name</th>
+                  <th scope="col" className="govuk-table__header">Town/City</th>
+                  <th scope="col" className="govuk-table__header">County</th>
+                  <th scope="col" className="govuk-table__header">Type & Rating</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {remainingItems.map((item, index) => (
-                  <tr 
-                    key={item.id} 
-                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors duration-150 ease-in-out`}
-                  >
-                    <td className="px-6 py-4 whitespace-normal text-sm font-medium text-gray-900">
-                      {item.original_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.town_city || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.county || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.type_rating || '-'}
-                    </td>
+              <tbody className="govuk-table__body">
+                {remainingItems.map((item) => (
+                  <tr key={item.id} className="govuk-table__row">
+                    <td className="govuk-table__cell govuk-!-font-weight-bold">{item.original_name}</td>
+                    <td className="govuk-table__cell">{item.town_city || '-'}</td>
+                    <td className="govuk-table__cell">{item.county || '-'}</td>
+                    <td className="govuk-table__cell">{item.type_rating || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -770,27 +760,46 @@ const RemainingItemsTab: React.FC = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex justify-center mt-6">
-              <div className="inline-flex rounded-md shadow-sm">
-                <button
-                  className="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Previous
-                </button>
-                <span className="relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 bg-white text-sm font-medium text-gray-700">
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  className="relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={page === totalPages}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Next
-                </button>
+            <nav className="govuk-pagination" role="navigation" aria-label="Pagination">
+              <div className="govuk-pagination__prev">
+                <a className={`govuk-pagination__link ${page === 1 ? 'govuk-pagination__link--disabled' : ''}`} 
+                   href="#prev" 
+                   onClick={(e) => { e.preventDefault(); if (page > 1) setPage(page - 1); }}
+                   rel="prev">
+                  <svg className="govuk-pagination__icon govuk-pagination__icon--prev" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true">
+                    <path d="m6.5938-0.0078125-6.7266 6.7266 6.7441 6.4062 1.377-1.449-4.1856-3.9768h12.896v-2h-12.984l4.2931-4.293-1.414-1.414z"></path>
+                  </svg>
+                  <span className="govuk-pagination__link-title">Previous</span>
+                </a>
               </div>
-            </div>
+              <ul className="govuk-pagination__list">
+                {Array.from({length: Math.min(totalPages, 5)}, (_, i) => {
+                  const pageNumber = i + 1;
+                  return (
+                    <li key={pageNumber} className="govuk-pagination__item">
+                      <a className={`govuk-pagination__link ${pageNumber === page ? 'govuk-pagination__link--current' : ''}`} 
+                         href={`#page-${pageNumber}`}
+                         onClick={(e) => { e.preventDefault(); setPage(pageNumber); }}
+                         aria-current={pageNumber === page ? 'page' : undefined}
+                         aria-label={`Page ${pageNumber}`}>
+                        {pageNumber}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="govuk-pagination__next">
+                <a className={`govuk-pagination__link ${page === totalPages ? 'govuk-pagination__link--disabled' : ''}`}
+                   href="#next"
+                   onClick={(e) => { e.preventDefault(); if (page < totalPages) setPage(page + 1); }}
+                   rel="next">
+                  <span className="govuk-pagination__link-title">Next</span>
+                  <svg className="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true">
+                    <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>
+                  </svg>
+                </a>
+              </div>
+            </nav>
           )}
         </>
       )}
@@ -895,57 +904,75 @@ export const EnrichmentStatus: React.FC = () => {
   return (
     <div className="container mx-auto py-6 px-4">
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold mb-4">Data Enrichment Status</h1>
+        <h1 className="govuk-heading-l">Data Enrichment Status</h1>
         
         {/* Add a toggle for auto-switching tabs */}
-        <div className="flex items-center mb-4">
-          <label className="inline-flex items-center cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={autoSwitchTabs} 
-              onChange={() => setAutoSwitchTabs(!autoSwitchTabs)}
-              className="sr-only peer" 
-            />
-            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            <span className="ms-3 text-sm font-medium text-gray-600">Auto-switch to active job tab</span>
-          </label>
+        <div className="govuk-form-group mb-4">
+          <div className="govuk-checkboxes">
+            <div className="govuk-checkboxes__item">
+              <input 
+                type="checkbox"
+                id="auto-switch-tabs" 
+                className="govuk-checkboxes__input"
+                checked={autoSwitchTabs} 
+                onChange={() => setAutoSwitchTabs(!autoSwitchTabs)} 
+              />
+              <label className="govuk-label govuk-checkboxes__label" htmlFor="auto-switch-tabs">
+                Auto-switch to active job tab
+              </label>
+            </div>
+          </div>
         </div>
         
-        <div className="flex mb-4">
-          <button
-            className={`px-4 py-2 mr-2 rounded-t-lg ${activeTab === 'overview' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            Overview
-          </button>
-          <button
-            className={`px-4 py-2 mr-2 rounded-t-lg ${activeTab === 'remaining' ? 'bg-blue-600 text-white' : 'bg-gray-200'} ${activeJob?.job_type === 'enrich_remaining' ? 'relative' : ''}`}
-            onClick={() => setActiveTab('remaining')}
-          >
-            Remaining Items
-            {activeJob?.job_type === 'enrich_remaining' && (
-              <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-              </span>
-            )}
-          </button>
-          <button
-            className={`px-4 py-2 rounded-t-lg ${activeTab === 'failed' ? 'bg-blue-600 text-white' : 'bg-gray-200'} ${activeJob?.job_type === 'reprocess_failed' ? 'relative' : ''}`}
-            onClick={() => setActiveTab('failed')}
-          >
-            Failed Enrichments
-            {activeJob?.job_type === 'reprocess_failed' && (
-              <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-              </span>
-            )}
-          </button>
+        <div className="govuk-tabs" data-module="govuk-tabs">
+          <ul className="govuk-tabs__list">
+            <li className={`govuk-tabs__list-item ${activeTab === 'overview' ? 'govuk-tabs__list-item--selected' : ''}`}>
+              <a 
+                className="govuk-tabs__tab" 
+                href="#overview" 
+                onClick={(e) => { e.preventDefault(); setActiveTab('overview'); }}
+                aria-selected={activeTab === 'overview'}
+              >
+                Overview
+              </a>
+            </li>
+            <li className={`govuk-tabs__list-item ${activeTab === 'remaining' ? 'govuk-tabs__list-item--selected' : ''}`}>
+              <a 
+                className="govuk-tabs__tab" 
+                href="#remaining" 
+                onClick={(e) => { e.preventDefault(); setActiveTab('remaining'); }}
+                aria-selected={activeTab === 'remaining'}
+              >
+                Remaining Items
+                {activeJob?.job_type === 'enrich_remaining' && (
+                  <span className="govuk-tag govuk-tag--green govuk-!-margin-left-2">
+                    Active
+                  </span>
+                )}
+              </a>
+            </li>
+            <li className={`govuk-tabs__list-item ${activeTab === 'failed' ? 'govuk-tabs__list-item--selected' : ''}`}>
+              <a 
+                className="govuk-tabs__tab" 
+                href="#failed" 
+                onClick={(e) => { e.preventDefault(); setActiveTab('failed'); }}
+                aria-selected={activeTab === 'failed'}
+              >
+                Failed Enrichments
+                {activeJob?.job_type === 'reprocess_failed' && (
+                  <span className="govuk-tag govuk-tag--green govuk-!-margin-left-2">
+                    Active
+                  </span>
+                )}
+              </a>
+            </li>
+          </ul>
+          
+          <div className="govuk-tabs__panel" id={activeTab}>
+            <TabContent activeTab={activeTab} />
+          </div>
         </div>
       </div>
-
-      <TabContent activeTab={activeTab} />
     </div>
   );
 }; 
