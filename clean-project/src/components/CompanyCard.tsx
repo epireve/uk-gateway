@@ -85,7 +85,7 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({ company }) => {
         )}
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
           <h3 className="font-bold mb-1">Status</h3>
           <p>
@@ -108,7 +108,9 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({ company }) => {
           <h3 className="font-bold mb-1">Incorporated</h3>
           <p className="text-govuk-dark-grey">{formatDate(company.date_of_creation)}</p>
         </div>
-        
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <h3 className="font-bold mb-1">Location</h3>
           <p className="text-govuk-dark-grey">
@@ -117,24 +119,43 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({ company }) => {
               : company.town_city || company.county || 'Unknown'}
           </p>
         </div>
-      </div>
-      
-      <div className="mb-4">
-        <h3 className="font-bold mb-1">Address</h3>
-        <p className="text-govuk-dark-grey">{formatAddress()}</p>
-      </div>
-      
-      {company.type_rating && (
-        <div className="mb-4">
-          <h3 className="font-bold mb-1">Type & Rating</h3>
-          <p className="text-govuk-dark-grey">{company.type_rating}</p>
+        
+        <div>
+          <h3 className="font-bold mb-1">Address</h3>
+          <p className="text-govuk-dark-grey">{formatAddress()}</p>
         </div>
-      )}
+      </div>
       
-      {company.route && (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {company.type_rating && (
+          <div>
+            <h3 className="font-bold mb-1">Type & Rating</h3>
+            <p className="text-govuk-dark-grey">{company.type_rating}</p>
+          </div>
+        )}
+        
+        {company.route && (
+          <div>
+            <h3 className="font-bold mb-1">Route</h3>
+            <p className="text-govuk-dark-grey">{company.route}</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Display SIC Codes more prominently */}
+      {company.sic_codes && company.sic_codes.length > 0 && (
         <div className="mb-4">
-          <h3 className="font-bold mb-1">Route</h3>
-          <p className="text-govuk-dark-grey">{company.route}</p>
+          <h3 className="font-bold mb-1">SIC Codes</h3>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {company.sic_codes.map((code, index) => (
+              <span 
+                key={index}
+                className="inline-block bg-govuk-light-grey text-govuk-black text-sm px-3 py-1 rounded"
+              >
+                {code}
+              </span>
+            ))}
+          </div>
         </div>
       )}
       
@@ -170,23 +191,6 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({ company }) => {
               </div>
             </div>
           </div>
-          
-          {/* SIC Codes Section */}
-          {company.sic_codes && company.sic_codes.length > 0 && (
-            <div className="mb-6">
-              <h3 className="font-bold mb-3">SIC Codes</h3>
-              <div className="flex flex-wrap gap-2">
-                {company.sic_codes.map((code, index) => (
-                  <span 
-                    key={index}
-                    className="inline-block bg-govuk-light-grey text-govuk-black text-sm px-3 py-1"
-                  >
-                    {code}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
           
           {/* Accounts Section */}
           {company.accounts_info && (

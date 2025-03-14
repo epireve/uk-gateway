@@ -9,6 +9,9 @@
 const RATE_LIMIT_PER_KEY = 600;
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
+// Enable debug logging - set this to false in production
+const DEBUG_LOGGING = true;
+
 export interface KeyStats {
   key: string;
   requestCount: number;
@@ -30,7 +33,28 @@ export class ApiKeyManager {
       throw new Error('At least one API key must be provided');
     }
     
-    this.keys = [...apiKeys];
+    // Filter out any invalid keys (empty strings, malformed keys, etc.)
+    this.keys = apiKeys.filter(key => {
+      // Basic validation - ensure key is non-empty and properly formatted
+      const isValid = key && typeof key === 'string' && key.trim().length > 0;
+      
+      if (!isValid && DEBUG_LOGGING) {
+        console.warn(`[KEY MANAGER] Ignoring invalid API key: "${key}"`);
+      }
+      
+      return isValid;
+    });
+    
+    if (this.keys.length === 0) {
+      throw new Error('No valid API keys provided');
+    }
+    
+    if (DEBUG_LOGGING) {
+      console.log(`[KEY MANAGER] Initialized with ${this.keys.length} API keys`);
+      this.keys.forEach((key, index) => {
+        console.log(`[KEY MANAGER] Key ${index + 1}: ${key.substring(0, 8)}...${key.substring(key.length - 4)}`);
+      });
+    }
     
     // Initialize usage tracking for each key
     this.keys.forEach(key => {
@@ -55,8 +79,15 @@ export class ApiKeyManager {
       return usageA - usageB;
     });
     
+    const selectedKey = sortedKeys[0];
+    const usagePercent = this.getKeyUsagePercent(selectedKey);
+    
+    if (DEBUG_LOGGING) {
+      console.log(`[KEY MANAGER] Selected key: ${selectedKey.substring(0, 8)}... (${usagePercent.toFixed(1)}% used)`);
+    }
+    
     // Use the key with the lowest usage percentage
-    return sortedKeys[0];
+    return selectedKey;
   }
   
   /**
@@ -64,11 +95,17 @@ export class ApiKeyManager {
    */
   public registerRequest(key: string): void {
     if (!this.keys.includes(key)) {
-      throw new Error(`Unknown API key: ${key.substring(0, 8)}...`);
+      const error = `Unknown API key: ${key.substring(0, 8)}...`;
+      console.error(`[KEY MANAGER] ${error}`);
+      throw new Error(error);
     }
     
     // Reset window if needed
     if (Date.now() - this.usage[key].windowStart > RATE_LIMIT_WINDOW_MS) {
+      if (DEBUG_LOGGING) {
+        console.log(`[KEY MANAGER] Resetting window for key: ${key.substring(0, 8)}...`);
+      }
+      
       this.usage[key] = {
         count: 0,
         windowStart: Date.now()
@@ -77,6 +114,10 @@ export class ApiKeyManager {
     
     // Increment the request count
     this.usage[key].count += 1;
+    
+    if (DEBUG_LOGGING && this.usage[key].count % 10 === 0) {
+      console.log(`[KEY MANAGER] Key ${key.substring(0, 8)}... has made ${this.usage[key].count} requests (${this.getKeyUsagePercent(key).toFixed(1)}%)`);
+    }
   }
   
   /**

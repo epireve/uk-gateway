@@ -79,6 +79,40 @@ function logToFile(filePath: string, data: unknown): void {
 logToFile(processLogFile, `Starting failed records reprocessing with ${apiKeys.length} API keys and concurrency ${CONCURRENCY_LIMIT}`);
 console.log(`Starting failed records reprocessing. Logs will be saved to ${logDir}`);
 
+// Enhanced function to log successful API calls with detailed information
+function successLogDetails(companyName: string, companyNumber: string, profile: Record<string, unknown>) {
+  // Create a structured success log entry
+  const successData = {
+    companyName,
+    companyNumber,
+    companyStatus: profile.company_status || 'N/A',
+    type: profile.type || 'N/A',
+    dateOfCreation: profile.date_of_creation || 'N/A',
+    address: profile.registered_office_address ? 
+      `${(profile.registered_office_address as Record<string, string>).address_line_1 || ''}, ${(profile.registered_office_address as Record<string, string>).locality || ''}, ${(profile.registered_office_address as Record<string, string>).postal_code || ''}` 
+      : 'N/A',
+    sicCodes: Array.isArray(profile.sic_codes) ? profile.sic_codes : [],
+    timestamp: new Date().toISOString(),
+    apiUrl: `https://api.company-information.service.gov.uk/company/${companyNumber}`,
+    wasRetry: true,
+  };
+  
+  // Log to success file
+  logToFile(successLogFile, successData);
+  
+  // Also log to console
+  console.log(`\n[SUCCESS LOG] ✅ Successfully reprocessed company data:`);
+  console.log(`  - Company Name: ${companyName}`);
+  console.log(`  - Company Number: ${companyNumber}`);
+  console.log(`  - Status: ${successData.companyStatus}`);
+  console.log(`  - Type: ${successData.type}`);
+  console.log(`  - Date Created: ${successData.dateOfCreation}`);
+  console.log(`  - Address: ${successData.address}`);
+  console.log(`  - SIC Codes: ${successData.sicCodes.join(', ') || 'None'}`);
+  console.log(`  - API URL: ${successData.apiUrl}`);
+  console.log(`  - Timestamp: ${successData.timestamp}`);
+}
+
 // Function to search for a company in Companies House with key rotation
 async function searchCompany(companyName: string) {
   // Get the next available API key
@@ -136,8 +170,12 @@ async function getCompanyProfile(companyNumber: string) {
   const apiKey = keyManager.getNextKey();
   
   try {
+    // Log the exact URL being used
+    const apiUrl = `${companiesHouseBaseUrl}/company/${companyNumber}`;
+    console.log(`[API URL] Requesting: ${apiUrl}`);
+    
     const response = await axios.get(
-      `${companiesHouseBaseUrl}/company/${companyNumber}`,
+      apiUrl,
       {
         auth: {
           username: apiKey,
@@ -151,6 +189,8 @@ async function getCompanyProfile(companyNumber: string) {
 
     // Register successful request with key manager
     keyManager.registerRequest(apiKey);
+    
+    console.log(`[SUCCESS] Retrieved profile for company number "${companyNumber}" - ${response.data.company_name}`);
     
     // Return the full response to ensure we capture all fields
     return response.data;
@@ -253,7 +293,7 @@ async function collectFailedRecords(): Promise<FailedRecord[]> {
                 });
               }
             }
-          } catch (_) {
+          } catch {
             // Skip malformed log entries
           }
         }
@@ -424,14 +464,8 @@ async function processFailedRecord(record: FailedRecord, stats: {
       return;
     }
     
-    // Log success
-    logToFile(successLogFile, {
-      companyId: record.id,
-      companyName: record.name,
-      companyNumber: profile.company_number,
-      timestamp: new Date().toISOString(),
-      previousRetryCount: record.retryCount,
-    });
+    // Log detailed success
+    successLogDetails(record.name, profile.company_number, profile);
     
     // Remove from failed_enrichments table if it was from there
     if (record.source === 'db') {
