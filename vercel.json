@@ -1,6 +1,14 @@
 {
-  "buildCommand": "cd clean-project && pnpm build",
-  "installCommand": "cd clean-project && pnpm install",
-  "outputDirectory": "clean-project/.next",
-  "framework": "nextjs"
+  "builds": [
+    {
+      "src": "clean-project/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/clean-project/$1"
+    }
+  ]
 }
