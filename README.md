@@ -1,6 +1,6 @@
 # UK Gateway
 
-This repository contains the UK Gateway project, which includes a Next.js web application and data processing components.
+This repository contains the UK Gateway project, which includes a web portal for managing UK company data and data processing components.
 
 ## Project Structure
 
@@ -8,17 +8,16 @@ The project is organized into the following directories:
 
 ### `/app`
 
-Contains the Next.js web applications:
+Contains the Next.js web application:
 
-- `/app/clean-project`: The main Next.js application
-- `/app/uk-company-portal`: Alternative version of the portal
+- `/app/web-portal`: The main web portal for managing and viewing UK company data
 
 ### `/data-processing`
 
 Contains scripts and utilities for data processing:
 
 - `/data-processing/sic-codes`: SIC code scraping and uploading to Supabase
-- `/data-processing/companies`: Company data processing
+- `/data-processing/companies`: Company data processing and CSV files
 
 ### `/docs`
 
@@ -33,18 +32,25 @@ Documentation files:
 Configuration files and utility scripts:
 
 - `.env.example`: Example environment variables
-- `build.sh`: Build script
+- `build.sh`: Build script for the web portal
 
 ## Development
 
-### Next.js Application
+### Web Portal
 
-To run the Next.js application:
+To run the web portal:
 
 ```bash
-cd app/clean-project
-npm install
-npm run dev
+cd app/web-portal
+pnpm install
+pnpm dev
+```
+
+For production build:
+
+```bash
+cd config
+./build.sh
 ```
 
 ### Data Processing
@@ -60,20 +66,24 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## SIC Code Upload
+#### SIC Code Upload
 
 To upload SIC codes to Supabase:
 
 ```bash
 cd data-processing/sic-codes
-# Create and activate a virtual environment if not already done
-python -m venv ../../venv
 source ../../venv/bin/activate
-# Run the upload script
 python upload_sic_to_supabase.py
 ```
 
 See `/docs/SUPABASE_UPLOAD_README.md` for detailed instructions.
+
+#### Company Data Processing
+
+Company data files are stored in `/data-processing/companies/`. To process company data:
+
+1. Place your company CSV files in this directory
+2. Use the web portal's data processing scripts to load and enrich the data
 
 ## License
 

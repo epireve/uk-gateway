@@ -1,7 +1,8 @@
 {
-  "name": "clean-project",
+  "name": "uk-gateway-portal",
   "version": "0.1.0",
   "private": true,
+  "description": "Web portal for managing and viewing UK company data",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",

@@ -1,4 +1,19 @@
 #!/bin/bash
-cd clean-project
+
+# Exit on error
+set -e
+
+echo "Building UK Gateway web portal..."
+
+# Change to the web portal directory
+cd ../app/web-portal
+
+# Install dependencies
+echo "Installing dependencies..."
 pnpm install
-pnpm build 
+
+# Build the application
+echo "Building the application..."
+pnpm build
+
+echo "Build completed successfully!" 
