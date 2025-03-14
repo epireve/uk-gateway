@@ -234,13 +234,13 @@ async function getCompanyProfile(companyNumber: string) {
 
 // Main function to process companies with concurrency and rate limiting
 async function processCompaniesWithConcurrency() {
-  // Get companies that need enrichment from Supabase - LIMIT TO 20 FOR TROUBLESHOOTING
-  console.log('[TROUBLESHOOTING] Limiting to first 20 records for debugging');
+  // Get companies that need enrichment from Supabase - Process all remaining companies
+  console.log('[INFO] Retrieving all remaining companies that need enrichment');
+  
   const { data: companies, error } = await supabase
     .from('companies')
     .select('*')
-    .is('company_number', null) // Select only records that haven't been enriched
-    .limit(20); // REDUCED LIMIT FOR TROUBLESHOOTING
+    .is('company_number', null);  // Remove the limit to process all remaining companies
 
   if (error) {
     console.error('Error fetching companies from Supabase:', error.message);
@@ -269,8 +269,8 @@ async function processCompaniesWithConcurrency() {
     supabaseUpdates: 0,
   };
 
-  // Process with reduced concurrency for troubleshooting
-  const TROUBLESHOOTING_CONCURRENCY = 1; // Process one at a time for clearer logs
+  // Process with optimal concurrency based on available keys
+  const processingConcurrency = Math.min(5, apiKeys.length * 2); // Optimized concurrency - up to 5 concurrent requests
   
   // Process in batches
   const batches = chunk(companies, BATCH_SIZE);
@@ -293,8 +293,8 @@ async function processCompaniesWithConcurrency() {
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
     
-    // Create a concurrency limiter - USE TROUBLESHOOTING_CONCURRENCY
-    const limit = pLimit(TROUBLESHOOTING_CONCURRENCY);
+    // Create a concurrency limiter using the optimal concurrency setting
+    const limit = pLimit(processingConcurrency);
     
     // Array to store unprocessed companies for retry
     const retryCompanies: typeof batch = [];
