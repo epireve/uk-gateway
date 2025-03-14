@@ -68,7 +68,7 @@ export const CompanySearch: React.FC = () => {
     
     // Update existing parameters
     Object.entries(params).forEach(([key, value]) => {
-      if (value === null || value === '' || value === 'all') {
+      if (value === null || value === '' || value === 'all' || value === 'false') {
         url.searchParams.delete(key);
       } else {
         url.searchParams.set(key, value);
@@ -140,12 +140,13 @@ export const CompanySearch: React.FC = () => {
       
       // Update URL parameters
       updateUrlParams({
-        q: term || null,
+        q: term?.trim() || null,
         page: page > 1 ? page.toString() : null,
         enriched: enrichedOnly ? 'true' : null,
         route: selectedRoute !== 'all' ? selectedRoute : null,
         type: selectedTypeRating !== 'all' ? selectedTypeRating : null,
-        // location: selectedTownCity !== 'all' ? selectedTownCity : null, // Commented out since location filter is disabled
+        // Explicitly set these to null to ensure they're removed if not active
+        location: selectedTownCity !== 'all' ? selectedTownCity : null,
       });
     } catch (err) {
       setError('Error loading companies. Please try again.');
@@ -172,12 +173,24 @@ export const CompanySearch: React.FC = () => {
     const newValue = e.target.checked;
     setEnrichedOnly(newValue);
     setCurrentPage(1);
+    
+    // Immediately update URL for this specific filter
+    updateUrlParams({
+      enriched: newValue ? 'true' : null
+    });
+    
     loadCompanies(1, searchTerm);
   };
   
   const handleTownCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newValue = e.target.value;
     setSelectedTownCity(newValue);
+    
+    // Immediately update URL for this specific filter
+    updateUrlParams({
+      location: newValue !== 'all' ? newValue : null
+    });
+    
     // We won't trigger a reload for town/city changes for now
     // setCurrentPage(1);
     // loadCompanies(1, searchTerm);
@@ -186,6 +199,12 @@ export const CompanySearch: React.FC = () => {
   const handleRouteChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newValue = e.target.value;
     setSelectedRoute(newValue);
+    
+    // Immediately update URL for this specific filter
+    updateUrlParams({
+      route: newValue !== 'all' ? newValue : null
+    });
+    
     setCurrentPage(1);
     loadCompanies(1, searchTerm);
   };
@@ -193,7 +212,37 @@ export const CompanySearch: React.FC = () => {
   const handleTypeRatingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newValue = e.target.value;
     setSelectedTypeRating(newValue);
+    
+    // Immediately update URL for this specific filter
+    updateUrlParams({
+      type: newValue !== 'all' ? newValue : null
+    });
+    
     setCurrentPage(1);
+    loadCompanies(1, searchTerm);
+  };
+  
+  // Function to handle clearing all filters
+  const handleClearAllFilters = () => {
+    // Reset all filter states to defaults
+    setEnrichedOnly(false);
+    setSelectedTownCity('all');
+    setSelectedRoute('all');
+    setSelectedTypeRating('all');
+    setCurrentPage(1);
+    
+    // Clear all filter parameters from URL
+    updateUrlParams({
+      enriched: null,
+      location: null,
+      route: null,
+      type: null,
+      // Keep search term and reset page to 1
+      page: null,
+      q: searchTerm?.trim() || null
+    });
+    
+    // Reload companies with no filters
     loadCompanies(1, searchTerm);
   };
   
@@ -235,7 +284,21 @@ export const CompanySearch: React.FC = () => {
           
           {/* Filters section */}
           <div className="mt-6">
-            <h3 className="govuk-heading-s mb-4">Filters</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="govuk-heading-s mb-0">Filters</h3>
+              
+              {/* Clear all filters button */}
+              {(enrichedOnly || selectedRoute !== 'all' || selectedTypeRating !== 'all') && (
+                <button
+                  type="button"
+                  onClick={handleClearAllFilters}
+                  className="text-govuk-blue hover:text-govuk-blue-dark text-sm underline focus:outline-none focus:ring-2 focus:ring-govuk-blue p-1"
+                  aria-label="Clear all filters"
+                >
+                  Clear all filters
+                </button>
+              )}
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {/* Enriched data only checkbox - updated styling */}
