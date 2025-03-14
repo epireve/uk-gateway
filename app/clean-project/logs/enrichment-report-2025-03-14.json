@@ -1,0 +1,115 @@
+{
+  "date": "2025-03-14",
+  "stats": {
+    "total": 110763,
+    "successful": 4365,
+    "failed": 35412,
+    "apiCallsMade": 10240,
+    "durationMs": 1881602,
+    "durationMinutes": 31.360033333333334,
+    "keyUsage": [
+      {
+        "key": "1231467b-dda7-4b74-84ab-6876125b8ba2",
+        "requestCount": 179,
+        "windowStartTime": 1741976233207,
+        "usagePercent": 29.833333333333336,
+        "maskedKey": "1231467b...",
+        "lastErrorCode": 403,
+        "consecutiveErrors": 179
+      },
+      {
+        "key": "5adce9e3-2e5e-43a2-8b2b-cb48e8432fb4",
+        "requestCount": 177,
+        "windowStartTime": 1741976233207,
+        "usagePercent": 29.5,
+        "maskedKey": "5adce9e3...",
+        "lastErrorCode": 403,
+        "consecutiveErrors": 177
+      },
+      {
+        "key": "53db6c84-e309-4410-aab0-b81348ea0025",
+        "requestCount": 177,
+        "windowStartTime": 1741976233207,
+        "usagePercent": 29.5,
+        "maskedKey": "53db6c84...",
+        "lastErrorCode": 403,
+        "consecutiveErrors": 177
+      },
+      {
+        "key": "7e289ef6-2392-4c00-8ce1-0e402c897795",
+        "requestCount": 186,
+        "windowStartTime": 1741976233207,
+        "usagePercent": 31,
+        "maskedKey": "7e289ef6...",
+        "lastErrorCode": 403,
+        "consecutiveErrors": 186
+      },
+      {
+        "key": "38ff6ae6-a956-48b1-be8a-384e95d5398f",
+        "requestCount": 179,
+        "windowStartTime": 1741976233207,
+        "usagePercent": 29.833333333333336,
+        "maskedKey": "38ff6ae6...",
+        "lastErrorCode": 403,
+        "consecutiveErrors": 179
+      },
+      {
+        "key": "b0ed5b14-65f7-4f1c-babc-ca3b1c31bd7e",
+        "requestCount": 182,
+        "windowStartTime": 1741976233207,
+        "usagePercent": 30.333333333333336,
+        "maskedKey": "b0ed5b14...",
+        "lastErrorCode": 403,
+        "consecutiveErrors": 182
+      },
+      {
+        "key": "29bde86d-2e99-4e93-b31e-21e08e494f2b",
+        "requestCount": 183,
+        "windowStartTime": 1741976233207,
+        "usagePercent": 30.5,
+        "maskedKey": "29bde86d...",
+        "lastErrorCode": 403,
+        "consecutiveErrors": 183
+      },
+      {
+        "key": "684e5039-b069-4e53-81c6-adafc5a39568",
+        "requestCount": 183,
+        "windowStartTime": 1741976233207,
+        "usagePercent": 30.5,
+        "maskedKey": "684e5039...",
+        "lastErrorCode": 403,
+        "consecutiveErrors": 183
+      },
+      {
+        "key": "1c539275-3657-4452-b416-1e1f572b5d50",
+        "requestCount": 184,
+        "windowStartTime": 1741976233207,
+        "usagePercent": 30.666666666666664,
+        "maskedKey": "1c539275...",
+        "lastErrorCode": 403,
+        "consecutiveErrors": 184
+      },
+      {
+        "key": "210e6eae-4393-4991-b5ab-e6a7a3c7c850",
+        "requestCount": 185,
+        "windowStartTime": 1741976233207,
+        "usagePercent": 30.833333333333336,
+        "maskedKey": "210e6eae...",
+        "lastErrorCode": 403,
+        "consecutiveErrors": 185
+      },
+      {
+        "key": "224c88a2-3cfb-4ed6-b3c4-60665d406ef6",
+        "requestCount": 185,
+        "windowStartTime": 1741976233207,
+        "usagePercent": 30.833333333333336,
+        "maskedKey": "224c88a2...",
+        "lastErrorCode": 403,
+        "consecutiveErrors": 185
+      }
+    ]
+  },
+  "batchSize": 200,
+  "concurrencyLimit": 10,
+  "delayBetweenRequestsMs": 200
+}

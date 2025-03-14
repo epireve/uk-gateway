@@ -1,1 +1,0 @@
-console.log('Checking active job'); import { getActiveEnrichmentJob } from './src/lib/supabase-api'; async function check() { try { const job = await getActiveEnrichmentJob(); console.log('Active job:', job); } catch (e) { console.error(e); } } check();
