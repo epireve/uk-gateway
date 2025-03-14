@@ -9,8 +9,11 @@
     "lint": "next lint",
     "create-table": "ts-node --project tsconfig.scripts.json src/scripts/create-table.ts",
     "load-csv": "ts-node --project tsconfig.scripts.json src/scripts/load-csv-to-supabase.ts",
-    "enrich-data": "ts-node --project tsconfig.scripts.json src/scripts/process-csv.ts",
-    "init-db": "ts-node --project tsconfig.scripts.json src/scripts/initialize-db.ts"
+    "enrich-data": "ts-node --project tsconfig.scripts.json src/scripts/enrich-data.ts",
+    "reprocess-failed": "ts-node --project tsconfig.scripts.json src/scripts/reprocess-failed.ts",
+    "init-db": "ts-node --project tsconfig.scripts.json src/scripts/initialize-db.ts",
+    "view-report": "ts-node --project tsconfig.scripts.json src/scripts/view-report.ts",
+    "init-failed-table": "ts-node --project tsconfig.scripts.json -e \"import fs from 'fs'; import { execSync } from 'child_process'; const sql = fs.readFileSync('src/scripts/create-failed-enrichments-table.sql', 'utf8'); const cmd = `psql ${process.env.DATABASE_URL} -f src/scripts/create-failed-enrichments-table.sql`; try { execSync(cmd); console.log('Failed enrichments table created successfully'); } catch(e) { console.error('Error creating table:', e.message); }\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
@@ -28,6 +31,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/fs-extra": "^11.0.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
