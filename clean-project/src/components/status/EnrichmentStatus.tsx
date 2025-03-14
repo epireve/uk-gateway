@@ -851,6 +851,7 @@ export const EnrichmentStatus: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [activeJob, setActiveJob] = useState<ActiveEnrichmentJob | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [autoSwitchTabs, setAutoSwitchTabs] = useState<boolean>(false);
 
   // Check for active job to highlight the appropriate tab
   const checkActiveJob = async () => {
@@ -858,11 +859,14 @@ export const EnrichmentStatus: React.FC = () => {
       const job = await getActiveEnrichmentJob();
       setActiveJob(job);
       
-      // Automatically switch to the relevant tab if a job is active
-      if (job && job.job_type === 'reprocess_failed' && activeTab !== 'failed') {
-        setActiveTab('failed');
-      } else if (job && job.job_type === 'enrich_remaining' && activeTab !== 'remaining') {
-        setActiveTab('remaining');
+      // Only auto-switch if the feature is enabled
+      if (autoSwitchTabs) {
+        // Automatically switch to the relevant tab if a job is active
+        if (job && job.job_type === 'reprocess_failed' && activeTab !== 'failed') {
+          setActiveTab('failed');
+        } else if (job && job.job_type === 'enrich_remaining' && activeTab !== 'remaining') {
+          setActiveTab('remaining');
+        }
       }
     } catch (error) {
       console.error('Error checking active job:', error);
@@ -889,46 +893,56 @@ export const EnrichmentStatus: React.FC = () => {
   }, []);
 
   return (
-    <div className="bg-white p-6 rounded-md shadow-sm">
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
+    <div className="container mx-auto py-6 px-4">
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold mb-4">Data Enrichment Status</h1>
+        
+        {/* Add a toggle for auto-switching tabs */}
+        <div className="flex items-center mb-4">
+          <label className="inline-flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={autoSwitchTabs} 
+              onChange={() => setAutoSwitchTabs(!autoSwitchTabs)}
+              className="sr-only peer" 
+            />
+            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            <span className="ms-3 text-sm font-medium text-gray-600">Auto-switch to active job tab</span>
+          </label>
+        </div>
+        
+        <div className="flex mb-4">
           <button
+            className={`px-4 py-2 mr-2 rounded-t-lg ${activeTab === 'overview' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
             onClick={() => setActiveTab('overview')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'overview'
-                ? 'border-govuk-blue text-govuk-blue'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
           >
             Overview
           </button>
           <button
-            onClick={() => setActiveTab('failed')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
-              activeTab === 'failed'
-                ? 'border-govuk-blue text-govuk-blue'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+            className={`px-4 py-2 mr-2 rounded-t-lg ${activeTab === 'remaining' ? 'bg-blue-600 text-white' : 'bg-gray-200'} ${activeJob?.job_type === 'enrich_remaining' ? 'relative' : ''}`}
+            onClick={() => setActiveTab('remaining')}
           >
-            Failed Enrichments
-            {activeJob && activeJob.job_type === 'reprocess_failed' && (
-              <span className="ml-2 w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+            Remaining Items
+            {activeJob?.job_type === 'enrich_remaining' && (
+              <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+              </span>
             )}
           </button>
           <button
-            onClick={() => setActiveTab('remaining')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
-              activeTab === 'remaining'
-                ? 'border-govuk-blue text-govuk-blue'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+            className={`px-4 py-2 rounded-t-lg ${activeTab === 'failed' ? 'bg-blue-600 text-white' : 'bg-gray-200'} ${activeJob?.job_type === 'reprocess_failed' ? 'relative' : ''}`}
+            onClick={() => setActiveTab('failed')}
           >
-            Remaining Items
-            {activeJob && activeJob.job_type === 'enrich_remaining' && (
-              <span className="ml-2 w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+            Failed Enrichments
+            {activeJob?.job_type === 'reprocess_failed' && (
+              <span className="absolute top-0 right-0 transform translate-x-1/2 -translate-y-1/2 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+              </span>
             )}
           </button>
-        </nav>
+        </div>
       </div>
 
       <TabContent activeTab={activeTab} />
