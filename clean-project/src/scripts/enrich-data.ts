@@ -8,6 +8,7 @@ import {
   EnrichedCompany 
 } from '../lib/models';
 import { getKeyManager } from '../lib/key-manager';
+import { logEnrichmentProcess, updateEnrichmentJob, getActiveJobId } from './logging-helper';
 
 // Load environment variables
 dotenv.config();
@@ -64,6 +65,9 @@ const CONCURRENCY_LIMIT = process.env.CONCURRENCY_LIMIT
 
 console.log(`Using concurrency limit of ${CONCURRENCY_LIMIT}`);
 
+// Variable to store our active job ID for logging
+let activeJobId: number | null = null;
+
 // Create logger function
 function logToFile(filePath: string, data: unknown): void {
   const timestamp = new Date().toISOString();
@@ -72,11 +76,33 @@ function logToFile(filePath: string, data: unknown): void {
     : `${timestamp} - ${JSON.stringify(data)}\n`;
   
   fs.appendFileSync(filePath, logEntry);
+  
+  // Also log to database if we have an active job ID
+  if (activeJobId) {
+    const level = filePath.includes('failed') ? 'error' : 'info';
+    const message = typeof data === 'string' ? data : JSON.stringify(data);
+    logEnrichmentProcess(message, level, activeJobId).catch(err => {
+      console.error('Error saving log to database:', err);
+    });
+  }
 }
 
 // Log process start
-logToFile(processLogFile, `Starting data enrichment process with ${apiKeys.length} API keys and concurrency ${CONCURRENCY_LIMIT}`);
-console.log(`Starting data enrichment process. Logs will be saved to ${logDir}`);
+async function initializeProcess() {
+  // Check for and get active job ID from database
+  activeJobId = await getActiveJobId();
+  
+  if (activeJobId) {
+    await updateEnrichmentJob(activeJobId, {
+      status: 'processing',
+      startedAt: true,
+    });
+    await logEnrichmentProcess(`Starting data enrichment process with ${apiKeys.length} API keys and concurrency ${CONCURRENCY_LIMIT}`, 'info', activeJobId);
+  }
+  
+  logToFile(processLogFile, `Starting data enrichment process with ${apiKeys.length} API keys and concurrency ${CONCURRENCY_LIMIT}`);
+  console.log(`Starting data enrichment process. Logs will be saved to ${logDir}`);
+}
 
 // Utility function to chunk array into batches
 function chunk<T>(array: T[], size: number): T[][] {
@@ -113,9 +139,17 @@ async function searchCompany(companyName: string) {
     
     const firstItem = response.data.items?.[0] || null;
     if (firstItem) {
-      console.log(`[SUCCESS] Found company "${companyName}" - matched with "${firstItem.title}" (${firstItem.company_number})`);
+      const message = `Found company "${companyName}" - matched with "${firstItem.title}" (${firstItem.company_number})`;
+      console.log(`[SUCCESS] ${message}`);
+      if (activeJobId) {
+        await logEnrichmentProcess(message, 'info', activeJobId);
+      }
     } else {
-      console.log(`[WARNING] No matches found for company "${companyName}"`);
+      const message = `No matches found for company "${companyName}"`;
+      console.log(`[WARNING] ${message}`);
+      if (activeJobId) {
+        await logEnrichmentProcess(message, 'warning', activeJobId);
+      }
     }
     
     return firstItem;
@@ -139,13 +173,17 @@ async function searchCompany(companyName: string) {
       throw new Error(`Rate limit exceeded when searching for ${companyName}`);
     }
 
-    console.error(`Error searching for company ${companyName}:`, errorObj.message);
+    const errorMessage = `Error searching for company ${companyName}: ${errorObj.message}`;
+    console.error(errorMessage);
+    if (activeJobId) {
+      await logEnrichmentProcess(errorMessage, 'error', activeJobId);
+    }
     return null;
   }
 }
 
 // Enhanced function to log successful API calls with detailed information
-function successLogDetails(companyName: string, companyNumber: string, profile: Record<string, unknown>) {
+async function successLogDetails(companyName: string, companyNumber: string, profile: Record<string, unknown>) {
   // Create a structured success log entry
   const successData = {
     companyName,
@@ -163,6 +201,12 @@ function successLogDetails(companyName: string, companyNumber: string, profile: 
   
   // Log to success file
   logToFile(successLogFile, successData);
+  
+  // Also log to database
+  if (activeJobId) {
+    const message = `Successfully enriched: ${companyName} (${companyNumber})`;
+    await logEnrichmentProcess(message, 'info', activeJobId);
+  }
   
   // Also log to console
   console.log(`\n[SUCCESS LOG] ✅ Successfully enriched company data:`);
@@ -203,7 +247,12 @@ async function getCompanyProfile(companyNumber: string) {
     // Register successful request with key manager
     keyManager.registerRequest(apiKey);
     
-    console.log(`[SUCCESS] Retrieved profile for company number "${companyNumber}" - ${response.data.company_name}`);
+    const message = `Retrieved profile for company number "${companyNumber}" - ${response.data.company_name}`;
+    console.log(`[SUCCESS] ${message}`);
+    
+    if (activeJobId) {
+      await logEnrichmentProcess(message, 'info', activeJobId);
+    }
     
     // Return the full response to ensure we capture all fields
     return response.data;
@@ -227,15 +276,29 @@ async function getCompanyProfile(companyNumber: string) {
       throw new Error(`Rate limit exceeded when fetching profile for ${companyNumber}`);
     }
 
-    console.error(`Error fetching company profile for ${companyNumber}:`, errorObj.message);
+    const errorMessage = `Error fetching company profile for ${companyNumber}: ${errorObj.message}`;
+    console.error(errorMessage);
+    
+    if (activeJobId) {
+      await logEnrichmentProcess(errorMessage, 'error', activeJobId);
+    }
+    
     return null;
   }
 }
 
 // Main function to process companies with concurrency and rate limiting
 async function processCompaniesWithConcurrency() {
+  // Initialize process and get active job ID
+  await initializeProcess();
+  
   // Get companies that need enrichment from Supabase - Process all remaining companies
-  console.log('[INFO] Retrieving all remaining companies that need enrichment');
+  const message = '[INFO] Retrieving all remaining companies that need enrichment';
+  console.log(message);
+  
+  if (activeJobId) {
+    await logEnrichmentProcess(message, 'info', activeJobId);
+  }
   
   const { data: companies, error } = await supabase
     .from('companies')
@@ -243,20 +306,50 @@ async function processCompaniesWithConcurrency() {
     .is('company_number', null);  // Remove the limit to process all remaining companies
 
   if (error) {
-    console.error('Error fetching companies from Supabase:', error.message);
-    logToFile(processLogFile, `Error fetching companies: ${error.message}`);
+    const errorMessage = `Error fetching companies from Supabase: ${error.message}`;
+    console.error(errorMessage);
+    logToFile(processLogFile, errorMessage);
+    
+    if (activeJobId) {
+      await logEnrichmentProcess(errorMessage, 'error', activeJobId);
+      await updateEnrichmentJob(activeJobId, {
+        status: 'failed',
+        result: errorMessage,
+        completedAt: true
+      });
+    }
+    
     return;
   }
 
   if (!companies || companies.length === 0) {
-    console.log('No companies found that need enrichment');
-    logToFile(processLogFile, 'No companies found that need enrichment');
+    const noCompaniesMsg = 'No companies found that need enrichment';
+    console.log(noCompaniesMsg);
+    logToFile(processLogFile, noCompaniesMsg);
+    
+    if (activeJobId) {
+      await logEnrichmentProcess(noCompaniesMsg, 'info', activeJobId);
+      await updateEnrichmentJob(activeJobId, {
+        status: 'completed',
+        result: 'No companies to process',
+        completedAt: true
+      });
+    }
+    
     return;
   }
 
-  console.log(`Found ${companies.length} companies to enrich for troubleshooting`);
+  const foundCompaniesMsg = `Found ${companies.length} companies to enrich`;
+  console.log(foundCompaniesMsg);
   console.log(`First company: ${JSON.stringify(companies[0], null, 2)}`);
-  logToFile(processLogFile, `Found ${companies.length} companies to enrich`);
+  logToFile(processLogFile, foundCompaniesMsg);
+  
+  if (activeJobId) {
+    await logEnrichmentProcess(foundCompaniesMsg, 'info', activeJobId);
+    await updateEnrichmentJob(activeJobId, {
+      status: 'processing'
+    });
+  }
 
   // Initialize statistics
   const stats = {
@@ -277,8 +370,13 @@ async function processCompaniesWithConcurrency() {
   
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
-    logToFile(processLogFile, `Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} companies)`);
-    console.log(`Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} companies)`);
+    const batchMsg = `Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} companies)`;
+    logToFile(processLogFile, batchMsg);
+    console.log(batchMsg);
+    
+    if (activeJobId) {
+      await logEnrichmentProcess(batchMsg, 'info', activeJobId);
+    }
     
     // Log key usage statistics
     const keyStats = keyManager.getStats();
@@ -288,8 +386,14 @@ async function processCompaniesWithConcurrency() {
     // Check if all keys are approaching their limits
     if (keyManager.areAllKeysExhausted()) {
       const waitTime = keyManager.getWaitTimeMs() + 1000; // Add 1s buffer
-      logToFile(processLogFile, `All keys approaching rate limits. Waiting ${waitTime/1000} seconds`);
-      console.log(`All keys approaching rate limits. Waiting ${waitTime/1000} seconds`);
+      const waitMsg = `All keys approaching rate limits. Waiting ${waitTime/1000} seconds`;
+      logToFile(processLogFile, waitMsg);
+      console.log(waitMsg);
+      
+      if (activeJobId) {
+        await logEnrichmentProcess(waitMsg, 'warning', activeJobId);
+      }
+      
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
     
@@ -305,18 +409,33 @@ async function processCompaniesWithConcurrency() {
         limit(() => processCompany(company, stats).catch(error => {
           // If rate limit error, add to retry array
           if (error instanceof Error && error.message.includes('Rate limit exceeded')) {
-            logToFile(processLogFile, `Rate limit for one key exceeded when processing ${company.original_name}, adding to retry queue`);
+            const rateLimitMsg = `Rate limit for one key exceeded when processing ${company.original_name}, adding to retry queue`;
+            logToFile(processLogFile, rateLimitMsg);
+            
+            if (activeJobId) {
+              logEnrichmentProcess(rateLimitMsg, 'warning', activeJobId).catch(console.error);
+            }
+            
             retryCompanies.push(company);
           } else {
             // Log other unexpected errors
             const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMsg = `Unexpected error in concurrent processing: ${errorMessage}`;
             logToFile(failedLogFile, {
               companyId: company.id,
               companyName: company.original_name as string,
-              error: `Unexpected error in concurrent processing: ${errorMessage}`,
+              error: errorMsg,
               timestamp: new Date().toISOString(),
               retryCount: 0,
             });
+            
+            if (activeJobId) {
+              logEnrichmentProcess(errorMsg, 'error', activeJobId).catch(console.error);
+              updateEnrichmentJob(activeJobId, {
+                itemsFailed: stats.failed + 1
+              }).catch(console.error);
+            }
+            
             stats.failed++;
           }
         }))
@@ -325,14 +444,25 @@ async function processCompaniesWithConcurrency() {
     
     // If there are companies to retry, wait for key refresh and retry them sequentially
     if (retryCompanies.length > 0) {
-      logToFile(processLogFile, `Need to retry ${retryCompanies.length} companies due to rate limits`);
-      console.log(`Need to retry ${retryCompanies.length} companies due to rate limits`);
+      const retryMsg = `Need to retry ${retryCompanies.length} companies due to rate limits`;
+      logToFile(processLogFile, retryMsg);
+      console.log(retryMsg);
+      
+      if (activeJobId) {
+        await logEnrichmentProcess(retryMsg, 'info', activeJobId);
+      }
       
       // If all keys are exhausted, wait for reset
       if (keyManager.areAllKeysExhausted()) {
         const waitTime = keyManager.getWaitTimeMs() + 1000; // Add 1s buffer
-        logToFile(processLogFile, `All keys exhausted before retry. Waiting ${waitTime/1000} seconds`);
-        console.log(`All keys exhausted before retry. Waiting ${waitTime/1000} seconds`);
+        const waitMsg = `All keys exhausted before retry. Waiting ${waitTime/1000} seconds`;
+        logToFile(processLogFile, waitMsg);
+        console.log(waitMsg);
+        
+        if (activeJobId) {
+          await logEnrichmentProcess(waitMsg, 'warning', activeJobId);
+        }
+        
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
       
@@ -344,13 +474,22 @@ async function processCompaniesWithConcurrency() {
           await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REQUESTS * 2));
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMsg = `Failed during retry: ${errorMessage}`;
           logToFile(failedLogFile, {
             companyId: company.id,
             companyName: company.original_name as string,
-            error: `Failed during retry: ${errorMessage}`,
+            error: errorMsg,
             timestamp: new Date().toISOString(),
             retryCount: 1,
           });
+          
+          if (activeJobId) {
+            await logEnrichmentProcess(errorMsg, 'error', activeJobId);
+            await updateEnrichmentJob(activeJobId, {
+              itemsFailed: stats.failed + 1
+            });
+          }
+          
           stats.failed++;
         }
       }
@@ -399,7 +538,7 @@ async function processCompaniesWithConcurrency() {
     delayBetweenRequestsMs: DELAY_BETWEEN_REQUESTS,
   }, null, 2));
   
-  // Save failed records to Supabase for later reprocessing
+  // Save failed records to Supabase
   await saveFailedRecordsToSupabase();
 }
 
@@ -441,13 +580,27 @@ async function saveFailedRecordsToSupabase() {
       
       // Create table manually if it doesn't exist
       if (tableCheckError) {
-        console.log('Failed enrichments table does not exist, creating it manually...');
+        const errorMsg = 'Failed enrichments table does not exist, creating it manually...';
+        console.log(errorMsg);
+        
+        if (activeJobId) {
+          await logEnrichmentProcess(errorMsg, 'warning', activeJobId);
+        }
         
         try {
           // Skip table creation for now - just continue with inserts
           console.log('Skipping table creation, will attempt direct inserts');
+          
+          if (activeJobId) {
+            await logEnrichmentProcess('Skipping table creation, will attempt direct inserts', 'info', activeJobId);
+          }
         } catch (createError) {
-          console.error('Error during table creation attempt:', createError);
+          const errorMsg = `Error during table creation attempt: ${createError instanceof Error ? createError.message : String(createError)}`;
+          console.error(errorMsg);
+          
+          if (activeJobId) {
+            await logEnrichmentProcess(errorMsg, 'error', activeJobId);
+          }
         }
       }
       
@@ -457,15 +610,30 @@ async function saveFailedRecordsToSupabase() {
         .insert(failedEntries);
       
       if (insertError) {
-        console.error('Error saving failed records to Supabase:', insertError.message);
+        const errorMsg = `Error saving failed records to Supabase: ${insertError.message}`;
+        console.error(errorMsg);
+        
+        if (activeJobId) {
+          await logEnrichmentProcess(errorMsg, 'error', activeJobId);
+        }
       } else {
-        console.log(`Saved ${failedEntries.length} failed records to Supabase for reprocessing`);
-        logToFile(processLogFile, `Saved ${failedEntries.length} failed records to Supabase for reprocessing`);
+        const successMsg = `Saved ${failedEntries.length} failed records to Supabase for reprocessing`;
+        console.log(successMsg);
+        logToFile(processLogFile, successMsg);
+        
+        if (activeJobId) {
+          await logEnrichmentProcess(successMsg, 'info', activeJobId);
+        }
       }
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Error processing failed records:', errorMessage);
+    const errorMsg = `Error processing failed records: ${errorMessage}`;
+    console.error(errorMsg);
+    
+    if (activeJobId) {
+      await logEnrichmentProcess(errorMsg, 'error', activeJobId);
+    }
   }
 }
 
@@ -515,7 +683,12 @@ async function processCompany(company: Record<string, unknown>, stats: {
   try {
     // Log which company we're processing
     const companyName = company.original_name as string;
-    console.log(`\n[PROCESSING] Company: "${companyName}" (ID: ${company.id})`);
+    const processingMessage = `Processing company: "${companyName}" (ID: ${company.id})`;
+    console.log(`\n[PROCESSING] ${processingMessage}`);
+    
+    if (activeJobId) {
+      await logEnrichmentProcess(processingMessage, 'info', activeJobId);
+    }
     
     // Log available API keys and usage before processing
     const keyStats = keyManager.getStats();
@@ -529,6 +702,7 @@ async function processCompany(company: Record<string, unknown>, stats: {
     await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REQUESTS));
     
     if (!searchResult) {
+      const errorMsg = `No search results found for ${companyName}`;
       logToFile(failedLogFile, {
         companyId: company.id,
         companyName: companyName,
@@ -536,12 +710,25 @@ async function processCompany(company: Record<string, unknown>, stats: {
         timestamp: new Date().toISOString(),
         retryCount: 0,
       });
+      
+      if (activeJobId) {
+        await logEnrichmentProcess(errorMsg, 'error', activeJobId);
+        await updateEnrichmentJob(activeJobId, {
+          itemsFailed: stats.failed + 1
+        });
+      }
+      
       stats.failed++;
       return;
     }
     
     // Log that we're proceeding to company profile
-    console.log(`[PROGRESS] Fetching detailed profile for company number: ${searchResult.company_number}`);
+    const progressMsg = `Fetching detailed profile for company number: ${searchResult.company_number}`;
+    console.log(`[PROGRESS] ${progressMsg}`);
+    
+    if (activeJobId) {
+      await logEnrichmentProcess(progressMsg, 'info', activeJobId);
+    }
     
     // Step 2: Get detailed company profile
     const profile = await getCompanyProfile(searchResult.company_number);
@@ -551,6 +738,7 @@ async function processCompany(company: Record<string, unknown>, stats: {
     await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REQUESTS));
     
     if (!profile) {
+      const errorMsg = `Failed to fetch company profile for ${companyName}`;
       logToFile(failedLogFile, {
         companyId: company.id,
         companyName: companyName,
@@ -559,6 +747,14 @@ async function processCompany(company: Record<string, unknown>, stats: {
         timestamp: new Date().toISOString(),
         retryCount: 0,
       });
+      
+      if (activeJobId) {
+        await logEnrichmentProcess(errorMsg, 'error', activeJobId);
+        await updateEnrichmentJob(activeJobId, {
+          itemsFailed: stats.failed + 1
+        });
+      }
+      
       stats.failed++;
       return;
     }
@@ -594,13 +790,22 @@ async function processCompany(company: Record<string, unknown>, stats: {
     const updateResult = await updateCompanyInSupabase(company.id as string, enrichedData, companyName);
     
     if (!updateResult.success) {
+      const errorMsg = `Failed to update Supabase: ${updateResult.error?.message || 'Unknown error'}`;
       logToFile(failedLogFile, {
         companyId: company.id,
         companyName: companyName,
-        error: `Failed to update Supabase: ${updateResult.error?.message || 'Unknown error'}`,
+        error: errorMsg,
         timestamp: new Date().toISOString(),
         retryCount: 0,
       });
+      
+      if (activeJobId) {
+        await logEnrichmentProcess(errorMsg, 'error', activeJobId);
+        await updateEnrichmentJob(activeJobId, {
+          itemsFailed: stats.failed + 1
+        });
+      }
+      
       stats.failed++;
       return;
     }
@@ -611,7 +816,14 @@ async function processCompany(company: Record<string, unknown>, stats: {
     }
     
     // Log detailed success
-    successLogDetails(companyName, profile.company_number, profile);
+    await successLogDetails(companyName, profile.company_number, profile);
+    
+    // Update successful count in database job
+    if (activeJobId) {
+      await updateEnrichmentJob(activeJobId, {
+        itemsProcessed: stats.successful + 1
+      });
+    }
     
     stats.successful++;
     
@@ -623,13 +835,22 @@ async function processCompany(company: Record<string, unknown>, stats: {
       // Individual key rate limit, throw to be handled by the batch processor
       throw error;
     } else {
+      const errorMsg = `Unexpected error processing ${companyName}: ${errorMessage}`;
       logToFile(failedLogFile, {
         companyId: company.id,
         companyName: companyName,
-        error: `Unexpected error: ${errorMessage}`,
+        error: errorMsg,
         timestamp: new Date().toISOString(),
         retryCount: 0,
       });
+      
+      if (activeJobId) {
+        await logEnrichmentProcess(errorMsg, 'error', activeJobId);
+        await updateEnrichmentJob(activeJobId, {
+          itemsFailed: stats.failed + 1
+        });
+      }
+      
       stats.failed++;
     }
   }
@@ -638,12 +859,29 @@ async function processCompany(company: Record<string, unknown>, stats: {
 // Execute the main process
 processCompaniesWithConcurrency()
   .then(() => {
-    console.log('Data enrichment process completed');
+    const completionMsg = 'Data enrichment process completed';
+    console.log(completionMsg);
+    
+    if (activeJobId) {
+      logEnrichmentProcess(completionMsg, 'info', activeJobId).catch(console.error);
+    }
+    
     process.exit(0);
   })
   .catch((error) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Fatal error in data enrichment process:', errorMessage);
+    const fatalMsg = `Fatal error in data enrichment process: ${errorMessage}`;
+    console.error(fatalMsg);
     logToFile(processLogFile, `Fatal error: ${errorMessage}`);
+    
+    if (activeJobId) {
+      logEnrichmentProcess(fatalMsg, 'error', activeJobId).catch(console.error);
+      updateEnrichmentJob(activeJobId, {
+        status: 'failed',
+        result: fatalMsg,
+        completedAt: true
+      }).catch(console.error);
+    }
+    
     process.exit(1);
   }); 
