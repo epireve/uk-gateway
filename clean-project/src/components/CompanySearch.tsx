@@ -60,33 +60,41 @@ export const CompanySearch: React.FC = () => {
   };
   
   return (
-    <div className="max-w-7xl mx-auto p-4">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">UK Company Search</h1>
-      
+    <div>
       {/* Search form */}
-      <form onSubmit={handleSearch} className="mb-8">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by company name or number..."
-            className="w-full sm:w-2/3 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="submit"
-            className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Searching...' : 'Search'}
-          </button>
-        </div>
-      </form>
+      <div className="govuk-card mb-8">
+        <h2 className="govuk-heading-m mb-4">Search the register</h2>
+        <form onSubmit={handleSearch}>
+          <div className="mb-4">
+            <label htmlFor="company-search" className="govuk-body block mb-2 font-bold">
+              Company name or number
+            </label>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <input
+                id="company-search"
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Enter a company name or number"
+                className="govuk-input w-full sm:w-2/3"
+                aria-label="Enter a company name or number"
+              />
+              <button
+                type="submit"
+                className="govuk-button w-full sm:w-auto"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
       
       {/* Results count */}
       {!isLoading && !error && (
-        <div className="mb-4">
-          <p className="text-gray-600">
+        <div className="mb-6">
+          <p className="govuk-body">
             {searchTerm.trim() !== ''
               ? `Found ${totalResults} results for "${searchTerm}"`
               : `Showing ${totalResults} companies`}
@@ -96,27 +104,28 @@ export const CompanySearch: React.FC = () => {
       
       {/* Error message */}
       {error && (
-        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
-          {error}
+        <div className="mb-6 p-4 border-l-4 border-govuk-error-colour bg-red-50">
+          <p className="govuk-body text-govuk-error-colour">{error}</p>
         </div>
       )}
       
       {/* Loading indicator */}
       {isLoading && (
         <div className="flex justify-center items-center p-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-govuk-blue"></div>
         </div>
       )}
       
       {/* Results */}
       {!isLoading && !error && companies.length === 0 && (
-        <div className="text-center p-12">
-          <p className="text-lg text-gray-600">No companies found.</p>
+        <div className="govuk-card text-center p-12">
+          <p className="govuk-body">No companies found.</p>
+          <p className="govuk-body mt-2">Try a different search term or check the spelling.</p>
         </div>
       )}
       
       {!isLoading && !error && companies.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
           {companies.map((company) => (
             <CompanyCard key={company.id} company={company} />
           ))}
@@ -125,12 +134,13 @@ export const CompanySearch: React.FC = () => {
       
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center mt-8">
-          <nav className="flex items-center">
+        <nav className="govuk-pagination" role="navigation" aria-label="Pagination">
+          <div className="flex items-center justify-center">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="mr-2 px-3 py-1 rounded border border-gray-300 disabled:opacity-50"
+              className={`govuk-pagination__link mx-1 ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              aria-label="Previous page"
             >
               Previous
             </button>
@@ -152,15 +162,17 @@ export const CompanySearch: React.FC = () => {
                   return (
                     <React.Fragment key={page}>
                       {showEllipsis && (
-                        <span className="px-3 py-1">...</span>
+                        <span className="mx-1 govuk-pagination__link">...</span>
                       )}
                       <button
                         onClick={() => handlePageChange(page)}
-                        className={`px-3 py-1 rounded ${
+                        className={`govuk-pagination__link mx-1 ${
                           currentPage === page
-                            ? 'bg-blue-600 text-white'
-                            : 'border border-gray-300'
+                            ? 'govuk-pagination__link--current'
+                            : ''
                         }`}
+                        aria-label={`Page ${page}`}
+                        aria-current={currentPage === page ? 'page' : undefined}
                       >
                         {page}
                       </button>
@@ -172,12 +184,13 @@ export const CompanySearch: React.FC = () => {
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="ml-2 px-3 py-1 rounded border border-gray-300 disabled:opacity-50"
+              className={`govuk-pagination__link mx-1 ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
+              aria-label="Next page"
             >
               Next
             </button>
-          </nav>
-        </div>
+          </div>
+        </nav>
       )}
     </div>
   );
