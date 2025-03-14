@@ -341,8 +341,6 @@ export const EnrichmentStatus: React.FC = () => {
 
   return (
     <div className="bg-white p-6 rounded-md shadow-sm">
-      <h1 className="govuk-heading-l mb-6">Data Enrichment Status</h1>
-      
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
           <button
