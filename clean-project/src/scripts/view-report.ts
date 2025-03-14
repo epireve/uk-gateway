@@ -6,6 +6,22 @@ dotenv.config();
 
 const logDir = path.join(process.cwd(), 'logs');
 
+// Define interfaces for the report structures
+interface ReportStats {
+  total: number;
+  successful: number;
+  failed: number;
+  apiCallsMade: number;
+  durationMinutes: number;
+  durationMs: number;
+}
+
+interface Report {
+  stats: ReportStats;
+  date: string;
+  [key: string]: unknown;
+}
+
 // Get command line arguments
 const args = process.argv.slice(2);
 let date = new Date().toISOString().split('T')[0]; // Default to today
@@ -28,8 +44,8 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
 const enrichmentReportPath = path.join(logDir, `enrichment-report-${date}.json`);
 const reprocessingReportPath = path.join(logDir, `reprocessing-report-${date}.json`);
 
-let enrichmentReport: any = null;
-let reprocessingReport: any = null;
+let enrichmentReport: Report | null = null;
+let reprocessingReport: Report | null = null;
 
 if (fs.existsSync(enrichmentReportPath)) {
   try {
