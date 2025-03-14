@@ -295,6 +295,7 @@ const FailedEnrichmentsTab: React.FC = () => {
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [activeJob, setActiveJob] = useState<ActiveEnrichmentJob | null>(null);
   const [refreshCount, setRefreshCount] = useState(0);
+  const [stats, setStats] = useState<StatsData | null>(null);
 
   const loadFailedItems = async () => {
     setLoading(true);
@@ -302,6 +303,10 @@ const FailedEnrichmentsTab: React.FC = () => {
       const result = await getFailedEnrichments(page, pageSize);
       setFailedItems(result.items);
       setTotalPages(result.totalPages);
+      
+      // Get overall stats to display count information
+      const statsData = await getEnrichmentStats();
+      setStats(statsData);
     } catch (error) {
       console.error('Error loading failed items:', error);
       setMessage({ text: 'Failed to load data', type: 'error' });
@@ -402,6 +407,26 @@ const FailedEnrichmentsTab: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats summary cards */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+            <div className="text-lg font-bold text-red-600">{stats.failed}</div>
+            <div className="text-gray-500">Failed Enrichments</div>
+          </div>
+          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+            <div className="text-lg font-bold">{stats.total}</div>
+            <div className="text-gray-500">Total Companies</div>
+          </div>
+          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+            <div className="text-lg font-bold">
+              {stats.total > 0 ? Math.round((stats.failed / stats.total) * 100) : 0}%
+            </div>
+            <div className="text-gray-500">Failed Percentage</div>
+          </div>
+        </div>
+      )}
+
       {activeJob && activeJob.job_type === 'reprocess_failed' && (
         <div className="p-4 mb-4 bg-blue-50 border border-blue-200 rounded">
           <p className="font-medium">Reprocessing failed enrichments</p>
@@ -416,6 +441,7 @@ const FailedEnrichmentsTab: React.FC = () => {
               <p className="text-sm text-right text-blue-700">
                 {activeJob.progress_percentage}% Complete
                 {activeJob.items_processed > 0 && ` (${activeJob.items_processed} processed)`}
+                {activeJob.total_items && ` of ${activeJob.total_items} items`}
               </p>
             </div>
           )}
@@ -520,6 +546,7 @@ const RemainingItemsTab: React.FC = () => {
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [activeJob, setActiveJob] = useState<ActiveEnrichmentJob | null>(null);
   const [refreshCount, setRefreshCount] = useState(0);
+  const [stats, setStats] = useState<StatsData | null>(null);
 
   const loadRemainingItems = async () => {
     setLoading(true);
@@ -527,6 +554,10 @@ const RemainingItemsTab: React.FC = () => {
       const result = await getRemainingCompanies(page, pageSize);
       setRemainingItems(result.items);
       setTotalPages(result.totalPages);
+      
+      // Get overall stats to display count information
+      const statsData = await getEnrichmentStats();
+      setStats(statsData);
     } catch (error) {
       console.error('Error loading remaining items:', error);
       setMessage({ text: 'Failed to load data', type: 'error' });
@@ -639,6 +670,26 @@ const RemainingItemsTab: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats summary cards */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+            <div className="text-lg font-bold text-yellow-600">{stats.remaining}</div>
+            <div className="text-gray-500">Remaining Items</div>
+          </div>
+          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+            <div className="text-lg font-bold">{stats.total}</div>
+            <div className="text-gray-500">Total Companies</div>
+          </div>
+          <div className="bg-white p-4 rounded-md shadow-sm border border-gray-200">
+            <div className="text-lg font-bold">
+              {stats.total > 0 ? Math.round((stats.remaining / stats.total) * 100) : 0}%
+            </div>
+            <div className="text-gray-500">Remaining Percentage</div>
+          </div>
+        </div>
+      )}
+
       {activeJob && activeJob.job_type === 'enrich_remaining' && (
         <div className="p-4 mb-4 bg-blue-50 border border-blue-200 rounded">
           <p className="font-medium">Enrichment process is currently running</p>
@@ -653,6 +704,7 @@ const RemainingItemsTab: React.FC = () => {
               <p className="text-sm text-right text-blue-700">
                 {activeJob.progress_percentage}% Complete
                 {activeJob.items_processed > 0 && ` (${activeJob.items_processed} processed)`}
+                {activeJob.total_items && ` of ${activeJob.total_items} items`}
               </p>
             </div>
           )}
