@@ -292,6 +292,9 @@ const FailedEnrichmentsTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [activeJob, setActiveJob] = useState<ActiveEnrichmentJob | null>(null);
+  const [refreshCount, setRefreshCount] = useState(0);
 
   const loadFailedItems = async () => {
     setLoading(true);
@@ -307,6 +310,54 @@ const FailedEnrichmentsTab: React.FC = () => {
     }
   };
 
+  // Check for active job and refresh data
+  const checkActiveJobAndRefresh = async () => {
+    try {
+      // Get active job status
+      const job = await getActiveEnrichmentJob();
+      
+      // Only update if job status changed or if job is processing
+      if (
+        (job && (!activeJob || job.status !== activeJob.status)) ||
+        (job && job.status === 'processing')
+      ) {
+        setActiveJob(job);
+        await loadFailedItems();
+      } else if (!job && activeJob) {
+        // Job completed or was removed
+        setActiveJob(null);
+        await loadFailedItems();
+      }
+    } catch (error) {
+      console.error('Error checking active job:', error);
+    }
+  };
+
+  // Set up polling for data refreshes
+  useEffect(() => {
+    // Initial load
+    loadFailedItems();
+    checkActiveJobAndRefresh();
+    
+    // Set up polling if not already set
+    if (!pollingInterval) {
+      const interval = setInterval(checkActiveJobAndRefresh, 10000); // Poll every 10 seconds
+      setPollingInterval(interval);
+    }
+    
+    // Clean up interval on unmount
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, []);
+
+  // Reload when page changes or when manually refreshed
+  useEffect(() => {
+    loadFailedItems();
+  }, [page, refreshCount]);
+
   const handleProcessFailed = async () => {
     setProcessing(true);
     setMessage({ text: '', type: '' });
@@ -316,6 +367,11 @@ const FailedEnrichmentsTab: React.FC = () => {
         text: result.message, 
         type: result.success ? 'success' : 'error' 
       });
+      
+      // Force refresh data after triggering enrichment
+      if (result.success) {
+        setTimeout(() => loadFailedItems(), 1500);
+      }
     } catch (error) {
       console.error('Error processing failed items:', error);
       setMessage({ text: 'Failed to start processing', type: 'error' });
@@ -324,22 +380,47 @@ const FailedEnrichmentsTab: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    loadFailedItems();
-  }, [page]);
-
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="govuk-heading-m">Failed Enrichments</h2>
-        <button 
-          onClick={handleProcessFailed}
-          disabled={processing || failedItems.length === 0}
-          className="govuk-button"
-        >
-          {processing ? 'Processing...' : 'Process Failed Items'}
-        </button>
+        <div className="flex space-x-2">
+          <button 
+            onClick={() => setRefreshCount(prev => prev + 1)} 
+            className="govuk-button govuk-button--secondary"
+            disabled={loading}
+          >
+            {loading ? 'Refreshing...' : 'Refresh List'}
+          </button>
+          <button 
+            onClick={handleProcessFailed}
+            disabled={processing || failedItems.length === 0}
+            className="govuk-button"
+          >
+            {processing ? 'Processing...' : 'Process Failed Items'}
+          </button>
+        </div>
       </div>
+
+      {activeJob && activeJob.job_type === 'reprocess_failed' && (
+        <div className="p-4 mb-4 bg-blue-50 border border-blue-200 rounded">
+          <p className="font-medium">Reprocessing failed enrichments</p>
+          {activeJob.progress_percentage !== null && (
+            <div className="mt-2">
+              <div className="w-full bg-blue-100 rounded-full h-2.5 mb-1">
+                <div 
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
+                  style={{ width: `${activeJob.progress_percentage}%` }}
+                ></div>
+              </div>
+              <p className="text-sm text-right text-blue-700">
+                {activeJob.progress_percentage}% Complete
+                {activeJob.items_processed > 0 && ` (${activeJob.items_processed} processed)`}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {message.text && (
         <div className={`p-4 mb-4 rounded ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
@@ -436,6 +517,9 @@ const RemainingItemsTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [activeJob, setActiveJob] = useState<ActiveEnrichmentJob | null>(null);
+  const [refreshCount, setRefreshCount] = useState(0);
 
   const loadRemainingItems = async () => {
     setLoading(true);
@@ -450,6 +534,54 @@ const RemainingItemsTab: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Check for active job and refresh data
+  const checkActiveJobAndRefresh = async () => {
+    try {
+      // Get active job status
+      const job = await getActiveEnrichmentJob();
+      
+      // Only update if job status changed or if job is processing
+      if (
+        (job && (!activeJob || job.status !== activeJob.status)) ||
+        (job && job.status === 'processing')
+      ) {
+        setActiveJob(job);
+        await loadRemainingItems();
+      } else if (!job && activeJob) {
+        // Job completed or was removed
+        setActiveJob(null);
+        await loadRemainingItems();
+      }
+    } catch (error) {
+      console.error('Error checking active job:', error);
+    }
+  };
+
+  // Set up polling for data refreshes
+  useEffect(() => {
+    // Initial load
+    loadRemainingItems();
+    checkActiveJobAndRefresh();
+    
+    // Set up polling if not already set
+    if (!pollingInterval) {
+      const interval = setInterval(checkActiveJobAndRefresh, 10000); // Poll every 10 seconds
+      setPollingInterval(interval);
+    }
+    
+    // Clean up interval on unmount
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, []);
+
+  // Reload when page changes or when manually refreshed
+  useEffect(() => {
+    loadRemainingItems();
+  }, [page, refreshCount]);
 
   const handleProcessRemaining = async () => {
     setProcessing(true);
@@ -468,6 +600,11 @@ const RemainingItemsTab: React.FC = () => {
         text: result.message || 'Operation completed, but no status message was returned', 
         type: result.success ? 'success' : 'error' 
       });
+
+      // Force refresh data after triggering enrichment
+      if (result.success) {
+        setTimeout(() => loadRemainingItems(), 1500);
+      }
     } catch (error) {
       console.error('Error processing remaining items:', error);
       const errorMessage = error instanceof Error 
@@ -480,22 +617,47 @@ const RemainingItemsTab: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    loadRemainingItems();
-  }, [page]);
-
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="govuk-heading-m">Remaining Items</h2>
-        <button 
-          onClick={handleProcessRemaining}
-          disabled={processing || remainingItems.length === 0}
-          className="govuk-button"
-        >
-          {processing ? 'Processing...' : 'Process Remaining Items'}
-        </button>
+        <div className="flex space-x-2">
+          <button 
+            onClick={() => setRefreshCount(prev => prev + 1)} 
+            className="govuk-button govuk-button--secondary"
+            disabled={loading}
+          >
+            {loading ? 'Refreshing...' : 'Refresh List'}
+          </button>
+          <button 
+            onClick={handleProcessRemaining}
+            disabled={processing || remainingItems.length === 0}
+            className="govuk-button"
+          >
+            {processing ? 'Processing...' : 'Process Remaining Items'}
+          </button>
+        </div>
       </div>
+
+      {activeJob && activeJob.job_type === 'enrich_remaining' && (
+        <div className="p-4 mb-4 bg-blue-50 border border-blue-200 rounded">
+          <p className="font-medium">Enrichment process is currently running</p>
+          {activeJob.progress_percentage !== null && (
+            <div className="mt-2">
+              <div className="w-full bg-blue-100 rounded-full h-2.5 mb-1">
+                <div 
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
+                  style={{ width: `${activeJob.progress_percentage}%` }}
+                ></div>
+              </div>
+              <p className="text-sm text-right text-blue-700">
+                {activeJob.progress_percentage}% Complete
+                {activeJob.items_processed > 0 && ` (${activeJob.items_processed} processed)`}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {message.text && (
         <div className={`p-4 mb-4 rounded ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
@@ -592,6 +754,7 @@ const TabContent: React.FC<TabContentProps> = ({ activeTab }) => {
     remaining: 0
   });
   const [loading, setLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const loadStats = async () => {
     setLoading(true);
@@ -609,7 +772,13 @@ const TabContent: React.FC<TabContentProps> = ({ activeTab }) => {
     loadStats();
   }, []);
 
-  if (loading) {
+  // Refresh data when the tab changes
+  useEffect(() => {
+    // Trigger a refresh by incrementing refreshKey
+    setRefreshKey(prev => prev + 1);
+  }, [activeTab]);
+
+  if (loading && activeTab === 'overview') {
     return (
       <div className="flex justify-center my-8">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-govuk-blue"></div>
@@ -619,15 +788,53 @@ const TabContent: React.FC<TabContentProps> = ({ activeTab }) => {
 
   return (
     <div>
-      {activeTab === 'overview' && <EnrichmentOverview stats={stats} />}
-      {activeTab === 'failed' && <FailedEnrichmentsTab />}
-      {activeTab === 'remaining' && <RemainingItemsTab />}
+      {activeTab === 'overview' && <EnrichmentOverview stats={stats} key={`overview-${refreshKey}`} />}
+      {activeTab === 'failed' && <FailedEnrichmentsTab key={`failed-${refreshKey}`} />}
+      {activeTab === 'remaining' && <RemainingItemsTab key={`remaining-${refreshKey}`} />}
     </div>
   );
 };
 
 export const EnrichmentStatus: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeJob, setActiveJob] = useState<ActiveEnrichmentJob | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // Check for active job to highlight the appropriate tab
+  const checkActiveJob = async () => {
+    try {
+      const job = await getActiveEnrichmentJob();
+      setActiveJob(job);
+      
+      // Automatically switch to the relevant tab if a job is active
+      if (job && job.job_type === 'reprocess_failed' && activeTab !== 'failed') {
+        setActiveTab('failed');
+      } else if (job && job.job_type === 'enrich_remaining' && activeTab !== 'remaining') {
+        setActiveTab('remaining');
+      }
+    } catch (error) {
+      console.error('Error checking active job:', error);
+    }
+  };
+
+  // Set up polling to check for active jobs
+  useEffect(() => {
+    // Initial check
+    checkActiveJob();
+    
+    // Set up polling
+    if (!pollingInterval) {
+      const interval = setInterval(checkActiveJob, 15000); // Check every 15 seconds
+      setPollingInterval(interval);
+    }
+    
+    // Clean up on unmount
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, []);
 
   return (
     <div className="bg-white p-6 rounded-md shadow-sm">
@@ -645,23 +852,29 @@ export const EnrichmentStatus: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('failed')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
               activeTab === 'failed'
                 ? 'border-govuk-blue text-govuk-blue'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
             Failed Enrichments
+            {activeJob && activeJob.job_type === 'reprocess_failed' && (
+              <span className="ml-2 w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('remaining')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
               activeTab === 'remaining'
                 ? 'border-govuk-blue text-govuk-blue'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
             Remaining Items
+            {activeJob && activeJob.job_type === 'enrich_remaining' && (
+              <span className="ml-2 w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+            )}
           </button>
         </nav>
       </div>
