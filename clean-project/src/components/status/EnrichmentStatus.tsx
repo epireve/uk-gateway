@@ -139,69 +139,107 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
   };
 
   return (
-    <div className="mb-8">
-      <h2 className="govuk-heading-m">Enrichment Overview</h2>
-      <div className="govuk-grid-row mb-6">
+    <div>
+      {/* Stats Cards */}
+      <div className="govuk-grid-row govuk-!-margin-bottom-6">
         <div className="govuk-grid-column-one-quarter">
-          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0">
-            <div className="govuk-panel__title govuk-!-font-size-27">{stats.total}</div>
-            <div className="govuk-panel__body govuk-!-font-size-16">Total Companies</div>
+          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center">
+            <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.total.toLocaleString()}</h3>
+            <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Total Companies</p>
           </div>
         </div>
         <div className="govuk-grid-column-one-quarter">
-          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-background-colour-green">
-            <div className="govuk-panel__title govuk-!-font-size-27">{stats.enriched}</div>
-            <div className="govuk-panel__body govuk-!-font-size-16">Enriched ({Math.round(stats.enriched / stats.total * 100)}%)</div>
+          <div className="govuk-panel govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#00703c', color: 'white' }}>
+            <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.enriched.toLocaleString()}</h3>
+            <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Enriched ({Math.round(stats.enriched / stats.total * 100)}%)</p>
           </div>
         </div>
         <div className="govuk-grid-column-one-quarter">
-          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-background-colour-yellow">
-            <div className="govuk-panel__title govuk-!-font-size-27">{stats.remaining}</div>
-            <div className="govuk-panel__body govuk-!-font-size-16">Remaining ({Math.round(stats.remaining / stats.total * 100)}%)</div>
+          <div className="govuk-panel govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#ffdd00', color: 'black' }}>
+            <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.remaining.toLocaleString()}</h3>
+            <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Remaining ({Math.round(stats.remaining / stats.total * 100)}%)</p>
           </div>
         </div>
         <div className="govuk-grid-column-one-quarter">
-          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-background-colour-red">
-            <div className="govuk-panel__title govuk-!-font-size-27">{stats.failed}</div>
-            <div className="govuk-panel__body govuk-!-font-size-16">Failed</div>
+          <div className="govuk-panel govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#d4351c', color: 'white' }}>
+            <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.failed.toLocaleString()}</h3>
+            <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Failed</p>
           </div>
         </div>
       </div>
       
-      <div className="mb-4">
-        <div className="w-full bg-gray-200 rounded-full h-4">
-          <div className="bg-green-600 h-4 rounded-full" style={{ width: `${Math.round(stats.enriched / stats.total * 100)}%` }}></div>
+      {/* Progress Bar */}
+      <div className="govuk-!-margin-bottom-6">
+        <h3 className="govuk-heading-s govuk-!-margin-bottom-2">Overall Progress</h3>
+        <div className="govuk-progress-bar" style={{ height: '20px' }}>
+          <div 
+            className="govuk-progress-bar__fill" 
+            style={{ width: `${Math.round(stats.enriched / stats.total * 100)}%`, backgroundColor: '#00703c' }}
+            role="progressbar"
+            aria-valuenow={Math.round(stats.enriched / stats.total * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          ></div>
         </div>
+        <p className="govuk-body-s govuk-!-margin-top-1 govuk-!-text-align-right">
+          {Math.round(stats.enriched / stats.total * 100)}% Complete ({stats.enriched.toLocaleString()} of {stats.total.toLocaleString()} companies)
+        </p>
       </div>
       
       {/* Active Job Status */}
       {activeJob && (
         <div className="govuk-inset-text govuk-!-margin-bottom-6">
-          <h3 className="govuk-heading-s govuk-!-margin-bottom-2">Active Enrichment Process</h3>
-          <p className="govuk-body-s govuk-!-margin-bottom-2">
-            <span className="govuk-!-font-weight-bold">Type:</span> {activeJob.job_type === 'reprocess_failed' ? 'Reprocessing Failed Items' : 'Processing Remaining Items'}
-          </p>
-          <p className="govuk-body-s govuk-!-margin-bottom-2">
-            <span className="govuk-!-font-weight-bold">Status:</span> {activeJob.status === 'pending' ? 'Pending' : 'Processing'}
-          </p>
-          <p className="govuk-body-s govuk-!-margin-bottom-2">
-            <span className="govuk-!-font-weight-bold">Started:</span> {activeJob.started_at ? new Date(activeJob.started_at).toLocaleString() : 'Not started yet'}
-          </p>
-          {activeJob.total_items !== null && activeJob.total_items > 0 && (
-            <p className="govuk-body-s govuk-!-margin-bottom-2">
-              <span className="govuk-!-font-weight-bold">Total Items:</span> {activeJob.total_items}
-            </p>
-          )}
-          {activeJob.items_processed > 0 && (
-            <p className="govuk-body-s govuk-!-margin-bottom-2">
-              <span className="govuk-!-font-weight-bold">Items Processed:</span> {activeJob.items_processed}
-            </p>
-          )}
-          {activeJob.items_failed > 0 && (
-            <p className="govuk-body-s govuk-!-margin-bottom-2">
-              <span className="govuk-!-font-weight-bold">Items Failed:</span> {activeJob.items_failed}
-            </p>
-          )}
+          <h3 className="govuk-heading-s govuk-!-margin-bottom-4">Active Enrichment Process</h3>
+          
+          <div className="govuk-grid-row">
+            <div className="govuk-grid-column-one-half">
+              <dl className="govuk-summary-list govuk-summary-list--no-border">
+                <div className="govuk-summary-list__row">
+                  <dt className="govuk-summary-list__key">Type</dt>
+                  <dd className="govuk-summary-list__value">
+                    {activeJob.job_type === 'reprocess_failed' ? 'Reprocessing Failed Items' : 'Processing Remaining Items'}
+                  </dd>
+                </div>
+                <div className="govuk-summary-list__row">
+                  <dt className="govuk-summary-list__key">Status</dt>
+                  <dd className="govuk-summary-list__value">
+                    {activeJob.status === 'pending' ? 
+                      <span className="govuk-tag govuk-tag--yellow">Pending</span> : 
+                      <span className="govuk-tag govuk-tag--blue">Processing</span>
+                    }
+                  </dd>
+                </div>
+                <div className="govuk-summary-list__row">
+                  <dt className="govuk-summary-list__key">Started</dt>
+                  <dd className="govuk-summary-list__value">
+                    {activeJob.started_at ? new Date(activeJob.started_at).toLocaleString() : 'Not started yet'}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            <div className="govuk-grid-column-one-half">
+              <dl className="govuk-summary-list govuk-summary-list--no-border">
+                {activeJob.total_items !== null && activeJob.total_items > 0 && (
+                  <div className="govuk-summary-list__row">
+                    <dt className="govuk-summary-list__key">Total Items</dt>
+                    <dd className="govuk-summary-list__value">{activeJob.total_items.toLocaleString()}</dd>
+                  </div>
+                )}
+                {activeJob.items_processed > 0 && (
+                  <div className="govuk-summary-list__row">
+                    <dt className="govuk-summary-list__key">Items Processed</dt>
+                    <dd className="govuk-summary-list__value">{activeJob.items_processed.toLocaleString()}</dd>
+                  </div>
+                )}
+                {activeJob.items_failed > 0 && (
+                  <div className="govuk-summary-list__row">
+                    <dt className="govuk-summary-list__key">Items Failed</dt>
+                    <dd className="govuk-summary-list__value">{activeJob.items_failed.toLocaleString()}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          </div>
           
           {/* Add progress bar for active job */}
           {activeJob.progress_percentage !== null && activeJob.progress_percentage > 0 && (
@@ -216,14 +254,18 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
                   aria-valuemax={100}
                 ></div>
               </div>
-              <p className="govuk-body-s govuk-!-margin-top-1 govuk-!-text-align-right">{activeJob.progress_percentage}% Complete</p>
+              <p className="govuk-body-s govuk-!-margin-top-1 govuk-!-text-align-right">
+                {activeJob.progress_percentage}% Complete
+                {activeJob.items_processed > 0 && ` (${activeJob.items_processed.toLocaleString()} processed)`}
+                {activeJob.total_items && ` of ${activeJob.total_items.toLocaleString()} items`}
+              </p>
             </div>
           )}
         </div>
       )}
       
       {/* Log Controls */}
-      <div className="mb-4">
+      <div className="govuk-button-group govuk-!-margin-bottom-6">
         <button 
           onClick={() => setShowLogs(!showLogs)} 
           className="govuk-button govuk-button--secondary"
@@ -235,7 +277,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
           <>
             <button 
               onClick={() => fetchLogsAndJobStatus(true)} 
-              className="govuk-button govuk-button--secondary govuk-!-margin-left-2"
+              className="govuk-button govuk-button--secondary"
               disabled={loading}
             >
               {loading ? 'Refreshing...' : 'Refresh Logs'}
@@ -261,7 +303,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
         {/* Add a separate button to refresh stats */}
         <button 
           onClick={fetchStats} 
-          className="govuk-button govuk-button--secondary govuk-!-margin-left-2"
+          className="govuk-button govuk-button--secondary"
           disabled={loading}
         >
           Refresh Stats
@@ -270,65 +312,79 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
       
       {/* Logs Display */}
       {showLogs && (
-        <div className="border border-gray-200 rounded-md overflow-hidden">
-          <div className="p-3 bg-gray-100 border-b border-gray-200 font-medium">
-            Enrichment Process Logs
-            {updatingLogs && (
-              <span className="inline-block ml-2 h-4 w-4">
-                <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-              </span>
+        <div className="govuk-!-margin-bottom-6">
+          <div className="govuk-panel govuk-panel--light-grey govuk-!-padding-0 govuk-!-margin-bottom-0">
+            <div className="govuk-!-padding-4 govuk-!-border-bottom-1">
+              <div className="govuk-grid-row">
+                <div className="govuk-grid-column-three-quarters">
+                  <h3 className="govuk-heading-s govuk-!-margin-bottom-0">Enrichment Process Logs</h3>
+                </div>
+                <div className="govuk-grid-column-one-quarter govuk-!-text-align-right">
+                  {updatingLogs && (
+                    <span className="govuk-hint">
+                      <span className="inline-block ml-2 h-4 w-4 govuk-!-margin-right-1">
+                        <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                      </span>
+                      Updating...
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {loading ? (
+              <div className="govuk-!-padding-6 govuk-!-text-align-center">
+                <div className="govuk-loader"></div>
+                <p className="govuk-body govuk-!-margin-top-2">Loading logs...</p>
+              </div>
+            ) : logs.length === 0 ? (
+              <div className="govuk-!-padding-6 govuk-!-text-align-center govuk-hint">
+                No logs available. Logs will appear here when an enrichment process is running.
+              </div>
+            ) : (
+              <div className="govuk-!-overflow-y-auto" style={{ maxHeight: '30rem' }}>
+                <table className="govuk-table govuk-!-margin-bottom-0">
+                  <thead className="govuk-table__head">
+                    <tr className="govuk-table__row">
+                      <th scope="col" className="govuk-table__header" style={{ width: '15%' }}>Time</th>
+                      <th scope="col" className="govuk-table__header" style={{ width: '10%' }}>Level</th>
+                      <th scope="col" className="govuk-table__header" style={{ width: '75%' }}>Message</th>
+                    </tr>
+                  </thead>
+                  <tbody className="govuk-table__body">
+                    {logs.map((log) => (
+                      <tr key={log.id} className="govuk-table__row">
+                        <td className="govuk-table__cell">{formatTimestamp(log.timestamp)}</td>
+                        <td className="govuk-table__cell">
+                          <span className={`govuk-tag ${
+                            log.log_level.toLowerCase() === 'error' ? 'govuk-tag--red' : 
+                            log.log_level.toLowerCase() === 'warning' ? 'govuk-tag--yellow' : 
+                            'govuk-tag--blue'}`}>
+                            {log.log_level.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="govuk-table__cell govuk-!-white-space-pre-wrap">{log.message}</td>
+                      </tr>
+                    ))}
+                    <tr><td colSpan={3} ref={logsEndRef} className="govuk-table__cell"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+            
+            {hasMoreLogs && (
+              <div className="govuk-!-padding-4 govuk-!-text-align-center govuk-!-border-top-1">
+                <button 
+                  className="govuk-button govuk-button--secondary" 
+                  onClick={() => fetchLogsAndJobStatus(true)}
+                  disabled={loading}
+                >
+                  Load more logs
+                </button>
+              </div>
             )}
           </div>
-          
-          {loading ? (
-            <div className="p-6 text-center">
-              <div className="govuk-loader"></div>
-              <p className="govuk-body govuk-!-margin-top-2">Loading logs...</p>
-            </div>
-          ) : logs.length === 0 ? (
-            <div className="p-6 text-center govuk-!-text-colour-secondary">
-              No logs available. Logs will appear here when an enrichment process is running.
-            </div>
-          ) : (
-            <div className="govuk-!-overflow-y-auto" style={{ maxHeight: '24rem' }}>
-              <table className="govuk-table">
-                <thead className="govuk-table__head">
-                  <tr className="govuk-table__row">
-                    <th scope="col" className="govuk-table__header">Time</th>
-                    <th scope="col" className="govuk-table__header">Level</th>
-                    <th scope="col" className="govuk-table__header">Message</th>
-                  </tr>
-                </thead>
-                <tbody className="govuk-table__body">
-                  {logs.map((log) => (
-                    <tr key={log.id} className="govuk-table__row">
-                      <td className="govuk-table__cell">{formatTimestamp(log.timestamp)}</td>
-                      <td className="govuk-table__cell">
-                        <span className={`govuk-tag ${log.log_level.toLowerCase() === 'error' ? 'govuk-tag--red' : log.log_level.toLowerCase() === 'warning' ? 'govuk-tag--yellow' : 'govuk-tag--blue'}`}>
-                          {log.log_level.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="govuk-table__cell govuk-!-white-space-pre-wrap">{log.message}</td>
-                    </tr>
-                  ))}
-                  <tr><td colSpan={3} ref={logsEndRef} className="govuk-table__cell"></td></tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-          
-          {hasMoreLogs && (
-            <div className="p-3 bg-gray-50 border-t border-gray-200 text-center">
-              <button 
-                className="govuk-button govuk-button--secondary" 
-                onClick={() => fetchLogsAndJobStatus(true)}
-                disabled={loading}
-              >
-                Load more logs
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -438,57 +494,68 @@ const FailedEnrichmentsTab: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="govuk-heading-m">Failed Enrichments</h2>
-        <div className="flex space-x-2">
-          <button 
-            onClick={() => setRefreshCount(prev => prev + 1)} 
-            className="govuk-button govuk-button--secondary"
-            disabled={loading}
-          >
-            {loading ? 'Refreshing...' : 'Refresh List'}
-          </button>
-          <button 
-            onClick={handleProcessFailed}
-            disabled={processing || failedItems.length === 0}
-            className="govuk-button"
-          >
-            {processing ? 'Processing...' : 'Process Failed Items'}
-          </button>
+      <div className="govuk-grid-row govuk-!-margin-bottom-4">
+        <div className="govuk-grid-column-two-thirds">
+          <h2 className="govuk-heading-m govuk-!-margin-bottom-0">Failed Enrichments</h2>
+          <p className="govuk-body govuk-!-margin-top-1">
+            Companies that failed during the enrichment process. You can retry these items.
+          </p>
+        </div>
+        <div className="govuk-grid-column-one-third govuk-!-text-align-right">
+          <div className="govuk-button-group">
+            <button 
+              onClick={() => setRefreshCount(prev => prev + 1)} 
+              className="govuk-button govuk-button--secondary"
+              disabled={loading}
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <button 
+              onClick={handleProcessFailed}
+              disabled={processing || failedItems.length === 0}
+              className="govuk-button"
+            >
+              {processing ? 'Processing...' : 'Process Failed'}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Stats summary cards */}
       {stats && (
-        <div className="govuk-grid-row mb-6">
+        <div className="govuk-grid-row govuk-!-margin-bottom-6">
           <div className="govuk-grid-column-one-third">
-            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-background-colour-red">
-              <div className="govuk-panel__title govuk-!-font-size-27">{stats.failed}</div>
-              <div className="govuk-panel__body govuk-!-font-size-16">Failed Enrichments</div>
+            <div className="govuk-panel govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#d4351c', color: 'white' }}>
+              <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.failed.toLocaleString()}</h3>
+              <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Failed Enrichments</p>
             </div>
           </div>
           <div className="govuk-grid-column-one-third">
-            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0">
-              <div className="govuk-panel__title govuk-!-font-size-27">{stats.total}</div>
-              <div className="govuk-panel__body govuk-!-font-size-16">Total Companies</div>
+            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center">
+              <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.total.toLocaleString()}</h3>
+              <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Total Companies</p>
             </div>
           </div>
           <div className="govuk-grid-column-one-third">
-            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0">
-              <div className="govuk-panel__title govuk-!-font-size-27">
+            <div className="govuk-panel govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#505a5f', color: 'white' }}>
+              <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">
                 {stats.total > 0 ? Math.round((stats.failed / stats.total) * 100) : 0}%
-              </div>
-              <div className="govuk-panel__body govuk-!-font-size-16">Failed Percentage</div>
+              </h3>
+              <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Failed Percentage</p>
             </div>
           </div>
         </div>
       )}
 
       {activeJob && activeJob.job_type === 'reprocess_failed' && (
-        <div className="govuk-inset-text govuk-!-margin-bottom-4">
-          <p className="govuk-body-s govuk-!-font-weight-bold govuk-!-margin-bottom-2">Reprocessing failed enrichments</p>
+        <div className="govuk-inset-text govuk-!-margin-bottom-6 govuk-!-border-color-blue">
+          <h3 className="govuk-heading-s govuk-!-margin-bottom-2">Active Reprocessing Job</h3>
+          <p className="govuk-body-s govuk-!-margin-bottom-3">
+            Reprocessing failed enrichments is currently in progress. The table below will update automatically when the process completes.
+          </p>
+          
           {activeJob.progress_percentage !== null && (
-            <div className="govuk-!-margin-top-2">
+            <div className="govuk-!-margin-top-3">
               <div className="govuk-progress-bar">
                 <div 
                   className="govuk-progress-bar__fill" 
@@ -499,10 +566,10 @@ const FailedEnrichmentsTab: React.FC = () => {
                   aria-valuemax={100}
                 ></div>
               </div>
-              <p className="govuk-body-s govuk-!-margin-top-1 govuk-!-text-align-right">
+              <p className="govuk-body-s govuk-!-margin-top-2 govuk-!-text-align-right">
                 {activeJob.progress_percentage}% Complete
-                {activeJob.items_processed > 0 && ` (${activeJob.items_processed} processed)`}
-                {activeJob.total_items && ` of ${activeJob.total_items} items`}
+                {activeJob.items_processed > 0 && ` (${activeJob.items_processed.toLocaleString()} processed)`}
+                {activeJob.total_items && ` of ${activeJob.total_items.toLocaleString()} items`}
               </p>
             </div>
           )}
@@ -510,42 +577,52 @@ const FailedEnrichmentsTab: React.FC = () => {
       )}
 
       {message.text && (
-        <div className={`govuk-inset-text govuk-!-margin-bottom-4 ${message.type === 'error' ? 'govuk-inset-text--error' : 'govuk-inset-text--success'}`}>
-          {message.text}
+        <div className={`govuk-inset-text govuk-!-margin-bottom-6 ${message.type === 'error' ? 'govuk-!-border-color-red' : 'govuk-!-border-color-green'}`}>
+          <p className="govuk-body govuk-!-margin-0">
+            {message.type === 'error' && <span className="govuk-!-font-weight-bold govuk-!-color-red">Error: </span>}
+            {message.type === 'success' && <span className="govuk-!-font-weight-bold govuk-!-color-green">Success: </span>}
+            {message.text}
+          </p>
         </div>
       )}
 
       {loading ? (
-        <div className="flex justify-center my-8">
+        <div className="govuk-!-padding-6 govuk-!-text-align-center">
           <div className="govuk-loader"></div>
+          <p className="govuk-body govuk-!-margin-top-2">Loading failed enrichments...</p>
         </div>
       ) : failedItems.length === 0 ? (
-        <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-6 govuk-!-margin-bottom-0 govuk-!-background-colour-light-grey govuk-!-text-colour-secondary">
-          No failed enrichments found
+        <div className="govuk-panel govuk-panel--light-grey govuk-!-padding-6 govuk-!-text-align-center govuk-!-margin-bottom-6">
+          <h3 className="govuk-heading-m govuk-!-margin-bottom-1">No failed enrichments found</h3>
+          <p className="govuk-body">All companies have been successfully enriched or not yet processed.</p>
         </div>
       ) : (
         <>
           <div className="govuk-!-margin-bottom-6">
-            <table className="govuk-table">
-              <thead className="govuk-table__head">
-                <tr className="govuk-table__row">
-                  <th scope="col" className="govuk-table__header">Company Name</th>
-                  <th scope="col" className="govuk-table__header">Retry Count</th>
-                  <th scope="col" className="govuk-table__header">Last Error</th>
-                  <th scope="col" className="govuk-table__header">Last Attempt</th>
-                </tr>
-              </thead>
-              <tbody className="govuk-table__body">
-                {failedItems.map((item) => (
-                  <tr key={item.id} className="govuk-table__row">
-                    <td className="govuk-table__cell govuk-!-font-weight-bold">{item.company_name}</td>
-                    <td className="govuk-table__cell">{item.retry_count}</td>
-                    <td className="govuk-table__cell govuk-table__cell--truncate">{item.last_error?.substring(0, 50)}...</td>
-                    <td className="govuk-table__cell">{new Date(item.updated_at).toLocaleString()}</td>
+            <div className="govuk-panel govuk-panel--light-grey govuk-!-padding-0 govuk-!-margin-bottom-0">
+              <table className="govuk-table govuk-!-margin-bottom-0">
+                <thead className="govuk-table__head">
+                  <tr className="govuk-table__row">
+                    <th scope="col" className="govuk-table__header" style={{ width: '40%' }}>Company Name</th>
+                    <th scope="col" className="govuk-table__header" style={{ width: '10%' }}>Retry Count</th>
+                    <th scope="col" className="govuk-table__header" style={{ width: '30%' }}>Last Error</th>
+                    <th scope="col" className="govuk-table__header" style={{ width: '20%' }}>Last Attempt</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="govuk-table__body">
+                  {failedItems.map((item) => (
+                    <tr key={item.id} className="govuk-table__row">
+                      <td className="govuk-table__cell govuk-!-font-weight-bold">{item.company_name}</td>
+                      <td className="govuk-table__cell">
+                        <span className="govuk-tag govuk-tag--grey">{item.retry_count}</span>
+                      </td>
+                      <td className="govuk-table__cell govuk-table__cell--truncate govuk-!-color-red">{item.last_error?.substring(0, 50)}...</td>
+                      <td className="govuk-table__cell">{new Date(item.updated_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {totalPages > 1 && (
@@ -711,57 +788,68 @@ const RemainingItemsTab: React.FC = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="govuk-heading-m">Remaining Items</h2>
-        <div className="flex space-x-2">
-          <button 
-            onClick={() => setRefreshCount(prev => prev + 1)} 
-            className="govuk-button govuk-button--secondary"
-            disabled={loading}
-          >
-            {loading ? 'Refreshing...' : 'Refresh List'}
-          </button>
-          <button 
-            onClick={handleProcessRemaining}
-            disabled={processing || remainingItems.length === 0}
-            className="govuk-button"
-          >
-            {processing ? 'Processing...' : 'Process Remaining Items'}
-          </button>
+      <div className="govuk-grid-row govuk-!-margin-bottom-4">
+        <div className="govuk-grid-column-two-thirds">
+          <h2 className="govuk-heading-m govuk-!-margin-bottom-0">Remaining Items</h2>
+          <p className="govuk-body govuk-!-margin-top-1">
+            Companies that still need to be processed through the enrichment pipeline.
+          </p>
+        </div>
+        <div className="govuk-grid-column-one-third govuk-!-text-align-right">
+          <div className="govuk-button-group">
+            <button 
+              onClick={() => setRefreshCount(prev => prev + 1)} 
+              className="govuk-button govuk-button--secondary"
+              disabled={loading}
+            >
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <button 
+              onClick={handleProcessRemaining}
+              disabled={processing || remainingItems.length === 0}
+              className="govuk-button"
+            >
+              {processing ? 'Processing...' : 'Process Items'}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Stats summary cards */}
       {stats && (
-        <div className="govuk-grid-row mb-6">
+        <div className="govuk-grid-row govuk-!-margin-bottom-6">
           <div className="govuk-grid-column-one-third">
-            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-background-colour-yellow">
-              <div className="govuk-panel__title govuk-!-font-size-27">{stats.remaining}</div>
-              <div className="govuk-panel__body govuk-!-font-size-16">Remaining Items</div>
+            <div className="govuk-panel govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#ffdd00', color: 'black' }}>
+              <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.remaining.toLocaleString()}</h3>
+              <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Remaining Items</p>
             </div>
           </div>
           <div className="govuk-grid-column-one-third">
-            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0">
-              <div className="govuk-panel__title govuk-!-font-size-27">{stats.total}</div>
-              <div className="govuk-panel__body govuk-!-font-size-16">Total Companies</div>
+            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center">
+              <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.total.toLocaleString()}</h3>
+              <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Total Companies</p>
             </div>
           </div>
           <div className="govuk-grid-column-one-third">
-            <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0">
-              <div className="govuk-panel__title govuk-!-font-size-27">
+            <div className="govuk-panel govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#505a5f', color: 'white' }}>
+              <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">
                 {stats.total > 0 ? Math.round((stats.remaining / stats.total) * 100) : 0}%
-              </div>
-              <div className="govuk-panel__body govuk-!-font-size-16">Remaining Percentage</div>
+              </h3>
+              <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Remaining Percentage</p>
             </div>
           </div>
         </div>
       )}
 
       {activeJob && activeJob.job_type === 'enrich_remaining' && (
-        <div className="govuk-inset-text govuk-!-margin-bottom-4">
-          <p className="govuk-body-s govuk-!-font-weight-bold govuk-!-margin-bottom-2">Enrichment process is currently running</p>
+        <div className="govuk-inset-text govuk-!-margin-bottom-6 govuk-!-border-color-blue">
+          <h3 className="govuk-heading-s govuk-!-margin-bottom-2">Active Enrichment Process</h3>
+          <p className="govuk-body-s govuk-!-margin-bottom-3">
+            The enrichment process is currently running for remaining items. The table below will update automatically when the process completes.
+          </p>
+          
           {activeJob.progress_percentage !== null && (
-            <div className="govuk-!-margin-top-2">
+            <div className="govuk-!-margin-top-3">
               <div className="govuk-progress-bar">
                 <div 
                   className="govuk-progress-bar__fill" 
@@ -772,10 +860,10 @@ const RemainingItemsTab: React.FC = () => {
                   aria-valuemax={100}
                 ></div>
               </div>
-              <p className="govuk-body-s govuk-!-margin-top-1 govuk-!-text-align-right">
+              <p className="govuk-body-s govuk-!-margin-top-2 govuk-!-text-align-right">
                 {activeJob.progress_percentage}% Complete
-                {activeJob.items_processed > 0 && ` (${activeJob.items_processed} processed)`}
-                {activeJob.total_items && ` of ${activeJob.total_items} items`}
+                {activeJob.items_processed > 0 && ` (${activeJob.items_processed.toLocaleString()} processed)`}
+                {activeJob.total_items && ` of ${activeJob.total_items.toLocaleString()} items`}
               </p>
             </div>
           )}
@@ -783,42 +871,50 @@ const RemainingItemsTab: React.FC = () => {
       )}
 
       {message.text && (
-        <div className={`govuk-inset-text govuk-!-margin-bottom-4 ${message.type === 'error' ? 'govuk-inset-text--error' : 'govuk-inset-text--success'}`}>
-          {message.text}
+        <div className={`govuk-inset-text govuk-!-margin-bottom-6 ${message.type === 'error' ? 'govuk-!-border-color-red' : 'govuk-!-border-color-green'}`}>
+          <p className="govuk-body govuk-!-margin-0">
+            {message.type === 'error' && <span className="govuk-!-font-weight-bold govuk-!-color-red">Error: </span>}
+            {message.type === 'success' && <span className="govuk-!-font-weight-bold govuk-!-color-green">Success: </span>}
+            {message.text}
+          </p>
         </div>
       )}
 
       {loading ? (
-        <div className="flex justify-center my-8">
+        <div className="govuk-!-padding-6 govuk-!-text-align-center">
           <div className="govuk-loader"></div>
+          <p className="govuk-body govuk-!-margin-top-2">Loading remaining items...</p>
         </div>
       ) : remainingItems.length === 0 ? (
-        <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-6 govuk-!-margin-bottom-0 govuk-!-background-colour-light-grey govuk-!-text-colour-secondary">
-          No remaining items found
+        <div className="govuk-panel govuk-panel--light-grey govuk-!-padding-6 govuk-!-text-align-center govuk-!-margin-bottom-6">
+          <h3 className="govuk-heading-m govuk-!-margin-bottom-1">No remaining items found</h3>
+          <p className="govuk-body">All companies have been processed or are currently being enriched.</p>
         </div>
       ) : (
         <>
           <div className="govuk-!-margin-bottom-6">
-            <table className="govuk-table">
-              <thead className="govuk-table__head">
-                <tr className="govuk-table__row">
-                  <th scope="col" className="govuk-table__header">Company Name</th>
-                  <th scope="col" className="govuk-table__header">Town/City</th>
-                  <th scope="col" className="govuk-table__header">County</th>
-                  <th scope="col" className="govuk-table__header">Type & Rating</th>
-                </tr>
-              </thead>
-              <tbody className="govuk-table__body">
-                {remainingItems.map((item) => (
-                  <tr key={item.id} className="govuk-table__row">
-                    <td className="govuk-table__cell govuk-!-font-weight-bold">{item.original_name}</td>
-                    <td className="govuk-table__cell">{item.town_city || '-'}</td>
-                    <td className="govuk-table__cell">{item.county || '-'}</td>
-                    <td className="govuk-table__cell">{item.type_rating || '-'}</td>
+            <div className="govuk-panel govuk-panel--light-grey govuk-!-padding-0 govuk-!-margin-bottom-0">
+              <table className="govuk-table govuk-!-margin-bottom-0">
+                <thead className="govuk-table__head">
+                  <tr className="govuk-table__row">
+                    <th scope="col" className="govuk-table__header" style={{ width: '40%' }}>Company Name</th>
+                    <th scope="col" className="govuk-table__header" style={{ width: '20%' }}>Town/City</th>
+                    <th scope="col" className="govuk-table__header" style={{ width: '20%' }}>County</th>
+                    <th scope="col" className="govuk-table__header" style={{ width: '20%' }}>Type & Rating</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="govuk-table__body">
+                  {remainingItems.map((item) => (
+                    <tr key={item.id} className="govuk-table__row">
+                      <td className="govuk-table__cell govuk-!-font-weight-bold">{item.original_name}</td>
+                      <td className="govuk-table__cell">{item.town_city || '-'}</td>
+                      <td className="govuk-table__cell">{item.county || '-'}</td>
+                      <td className="govuk-table__cell">{item.type_rating || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {totalPages > 1 && (
@@ -964,74 +1060,90 @@ export const EnrichmentStatus: React.FC = () => {
   }, []);
 
   return (
-    <div className="container mx-auto py-6 px-4">
-      <div className="mb-8">
-        <h1 className="govuk-heading-l">Data Enrichment Status</h1>
-        
-        {/* Add a toggle for auto-switching tabs */}
-        <div className="govuk-form-group mb-4">
-          <div className="govuk-checkboxes">
-            <div className="govuk-checkboxes__item">
-              <input 
-                type="checkbox"
-                id="auto-switch-tabs" 
-                className="govuk-checkboxes__input"
-                checked={autoSwitchTabs} 
-                onChange={() => setAutoSwitchTabs(!autoSwitchTabs)} 
-              />
-              <label className="govuk-label govuk-checkboxes__label" htmlFor="auto-switch-tabs">
-                Auto-switch to active job tab
-              </label>
-            </div>
-          </div>
-        </div>
-        
-        <div className="govuk-tabs" data-module="govuk-tabs">
-          <ul className="govuk-tabs__list">
-            <li className={`govuk-tabs__list-item ${activeTab === 'overview' ? 'govuk-tabs__list-item--selected' : ''}`}>
-              <a 
-                className="govuk-tabs__tab" 
-                href="#overview" 
-                onClick={(e) => { e.preventDefault(); setActiveTab('overview'); }}
-                aria-selected={activeTab === 'overview'}
-              >
-                Overview
-              </a>
-            </li>
-            <li className={`govuk-tabs__list-item ${activeTab === 'remaining' ? 'govuk-tabs__list-item--selected' : ''}`}>
-              <a 
-                className="govuk-tabs__tab" 
-                href="#remaining" 
-                onClick={(e) => { e.preventDefault(); setActiveTab('remaining'); }}
-                aria-selected={activeTab === 'remaining'}
-              >
-                Remaining Items
-                {activeJob?.job_type === 'enrich_remaining' && (
-                  <span className="govuk-tag govuk-tag--green govuk-!-margin-left-2">
-                    Active
-                  </span>
-                )}
-              </a>
-            </li>
-            <li className={`govuk-tabs__list-item ${activeTab === 'failed' ? 'govuk-tabs__list-item--selected' : ''}`}>
-              <a 
-                className="govuk-tabs__tab" 
-                href="#failed" 
-                onClick={(e) => { e.preventDefault(); setActiveTab('failed'); }}
-                aria-selected={activeTab === 'failed'}
-              >
-                Failed Enrichments
-                {activeJob?.job_type === 'reprocess_failed' && (
-                  <span className="govuk-tag govuk-tag--green govuk-!-margin-left-2">
-                    Active
-                  </span>
-                )}
-              </a>
-            </li>
-          </ul>
+    <div className="govuk-width-container">
+      <div className="govuk-main-wrapper">
+        <div className="govuk-grid-row">
+          <div className="govuk-grid-column-full">
+            <h1 className="govuk-heading-xl govuk-!-margin-bottom-4">Data Enrichment Status</h1>
+            
+            <p className="govuk-body-l govuk-!-margin-bottom-6">
+              This page allows you to view and manage the data enrichment process. You can view the current status, 
+              check failed enrichments, and trigger enrichment processes for both failed items and remaining companies.
+            </p>
           
-          <div className="govuk-tabs__panel" id={activeTab}>
-            <TabContent activeTab={activeTab} />
+            {/* Control panel with settings */}
+            <div className="govuk-panel govuk-panel--light-grey govuk-!-padding-4 govuk-!-margin-bottom-6">
+              <div className="govuk-grid-row">
+                <div className="govuk-grid-column-full">
+                  <h2 className="govuk-heading-m govuk-!-margin-bottom-3">Settings</h2>
+                  <div className="govuk-form-group govuk-!-margin-bottom-0">
+                    <div className="govuk-checkboxes">
+                      <div className="govuk-checkboxes__item">
+                        <input 
+                          type="checkbox"
+                          id="auto-switch-tabs" 
+                          className="govuk-checkboxes__input"
+                          checked={autoSwitchTabs} 
+                          onChange={() => setAutoSwitchTabs(!autoSwitchTabs)} 
+                        />
+                        <label className="govuk-label govuk-checkboxes__label" htmlFor="auto-switch-tabs">
+                          Auto-switch to active job tab
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="govuk-tabs" data-module="govuk-tabs">
+              <ul className="govuk-tabs__list govuk-!-margin-bottom-0 govuk-!-border-bottom-width-2">
+                <li className={`govuk-tabs__list-item ${activeTab === 'overview' ? 'govuk-tabs__list-item--selected' : ''}`}>
+                  <a 
+                    className="govuk-tabs__tab govuk-!-font-weight-bold" 
+                    href="#overview" 
+                    onClick={(e) => { e.preventDefault(); setActiveTab('overview'); }}
+                    aria-selected={activeTab === 'overview'}
+                  >
+                    Overview
+                  </a>
+                </li>
+                <li className={`govuk-tabs__list-item ${activeTab === 'remaining' ? 'govuk-tabs__list-item--selected' : ''}`}>
+                  <a 
+                    className="govuk-tabs__tab govuk-!-font-weight-bold" 
+                    href="#remaining" 
+                    onClick={(e) => { e.preventDefault(); setActiveTab('remaining'); }}
+                    aria-selected={activeTab === 'remaining'}
+                  >
+                    Remaining Items
+                    {activeJob?.job_type === 'enrich_remaining' && (
+                      <span className="govuk-tag govuk-tag--green govuk-!-margin-left-2">
+                        Active
+                      </span>
+                    )}
+                  </a>
+                </li>
+                <li className={`govuk-tabs__list-item ${activeTab === 'failed' ? 'govuk-tabs__list-item--selected' : ''}`}>
+                  <a 
+                    className="govuk-tabs__tab govuk-!-font-weight-bold" 
+                    href="#failed" 
+                    onClick={(e) => { e.preventDefault(); setActiveTab('failed'); }}
+                    aria-selected={activeTab === 'failed'}
+                  >
+                    Failed Enrichments
+                    {activeJob?.job_type === 'reprocess_failed' && (
+                      <span className="govuk-tag govuk-tag--green govuk-!-margin-left-2">
+                        Active
+                      </span>
+                    )}
+                  </a>
+                </li>
+              </ul>
+              
+              <div className="govuk-tabs__panel govuk-!-padding-top-6" id={activeTab}>
+                <TabContent activeTab={activeTab} />
+              </div>
+            </div>
           </div>
         </div>
       </div>
