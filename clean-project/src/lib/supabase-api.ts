@@ -471,4 +471,135 @@ export async function triggerEnrichment(type: 'failed' | 'remaining'): Promise<{
       }`
     };
   }
+}
+
+/**
+ * Get active enrichment job (if any)
+ * @returns Active job if exists, or null
+ */
+export async function getActiveEnrichmentJob(): Promise<{
+  id: number;
+  job_type: string;
+  status: string;
+  created_at: string;
+  started_at: string | null;
+  items_processed: number;
+  items_failed: number;
+} | null> {
+  try {
+    const { data, error } = await supabase
+      .from('enrichment_jobs')
+      .select('*')
+      .in('status', ['pending', 'processing'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No active job found
+        return null;
+      }
+      console.error('Error fetching active enrichment job:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in getActiveEnrichmentJob:', error);
+    return null;
+  }
+}
+
+export interface EnrichmentLogEntry {
+  id: number;
+  job_id: number | null;
+  log_level: string;
+  message: string;
+  timestamp: string;
+  metadata: Record<string, unknown> | null;
+}
+
+/**
+ * Get enrichment logs
+ * @param jobId Optional job ID to filter logs
+ * @param limit Maximum number of logs to return
+ * @returns Array of log entries
+ */
+export async function getEnrichmentLogs(
+  jobId?: number,
+  limit: number = 100
+): Promise<{
+  logs: EnrichmentLogEntry[];
+  hasMore: boolean;
+}> {
+  try {
+    let query = supabase
+      .from('enrichment_logs')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(limit + 1);
+    
+    if (jobId) {
+      query = query.eq('job_id', jobId);
+    }
+    
+    const { data, error } = await query;
+
+    if (error) {
+      // Check if error is because table doesn't exist
+      if (error.code === '42P01') {
+        return { logs: [], hasMore: false };
+      }
+      console.error('Error fetching enrichment logs:', error);
+      throw error;
+    }
+
+    const hasMore = data?.length > limit;
+    const logs = data?.slice(0, limit) || [];
+
+    return { logs, hasMore };
+  } catch (error) {
+    console.error('Error in getEnrichmentLogs:', error);
+    return { logs: [], hasMore: false };
+  }
+}
+
+/**
+ * Add a log entry to the enrichment_logs table
+ * @param message Log message
+ * @param level Log level (info, warning, error)
+ * @param jobId Optional job ID to associate with
+ * @param metadata Additional metadata
+ * @returns Success status
+ */
+export async function addEnrichmentLog(
+  message: string,
+  level: 'info' | 'warning' | 'error' = 'info',
+  jobId?: number,
+  metadata?: Record<string, unknown>
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('enrichment_logs')
+      .insert([
+        {
+          job_id: jobId || null,
+          log_level: level,
+          message,
+          timestamp: new Date().toISOString(),
+          metadata: metadata || null
+        }
+      ]);
+
+    if (error) {
+      console.error('Error adding enrichment log:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in addEnrichmentLog:', error);
+    return false;
+  }
 } 

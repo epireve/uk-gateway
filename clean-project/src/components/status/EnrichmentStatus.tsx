@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { getEnrichmentStats, getFailedEnrichments, getRemainingCompanies, triggerEnrichment, FailedEnrichmentItem } from '@/lib/supabase-api';
+import { getEnrichmentStats, getFailedEnrichments, getRemainingCompanies, triggerEnrichment, FailedEnrichmentItem, getActiveEnrichmentJob, getEnrichmentLogs, EnrichmentLogEntry } from '@/lib/supabase-api';
 import { EnrichedCompany } from '@/lib/models';
 
 type TabType = 'overview' | 'failed' | 'remaining';
@@ -17,7 +17,86 @@ interface TabContentProps {
   activeTab: TabType;
 }
 
+// Define an interface for the active job object
+interface ActiveEnrichmentJob {
+  id: number;
+  job_type: string;
+  status: string;
+  created_at: string;
+  started_at: string | null;
+  items_processed: number;
+  items_failed: number;
+}
+
 const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats }) => {
+  const [showLogs, setShowLogs] = useState(false);
+  const [logs, setLogs] = useState<EnrichmentLogEntry[]>([]);
+  const [hasMoreLogs, setHasMoreLogs] = useState(false);
+  const [activeJob, setActiveJob] = useState<ActiveEnrichmentJob | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // Function to fetch logs and job status
+  const fetchLogsAndJobStatus = async () => {
+    try {
+      // Get active job
+      const job = await getActiveEnrichmentJob();
+      setActiveJob(job);
+      
+      // Get logs
+      const { logs, hasMore } = await getEnrichmentLogs(job?.id, 50);
+      setLogs(logs);
+      setHasMoreLogs(hasMore);
+      
+      // If we have an active job, show logs automatically
+      if (job) {
+        setShowLogs(true);
+      }
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Set up polling for logs and job status when an enrichment job is active
+  useEffect(() => {
+    // Initial fetch
+    fetchLogsAndJobStatus();
+    
+    // Set up polling if not already set
+    if (!pollingInterval) {
+      const interval = setInterval(fetchLogsAndJobStatus, 5000); // Poll every 5 seconds
+      setPollingInterval(interval);
+    }
+    
+    // Clean up interval on unmount
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, []);
+
+  // Function to format log level with appropriate styling
+  const getLogLevelStyles = (level: string) => {
+    switch (level.toLowerCase()) {
+      case 'error':
+        return 'text-red-600 font-medium';
+      case 'warning':
+        return 'text-amber-600 font-medium';
+      case 'info':
+      default:
+        return 'text-blue-600 font-medium';
+    }
+  };
+
+  // Function to format timestamp
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
+  };
+
   return (
     <div className="mb-8">
       <h2 className="govuk-heading-m">Data Enrichment Overview</h2>
@@ -39,11 +118,124 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats }) => {
           <div className="text-gray-500">Failed</div>
         </div>
       </div>
+      
       <div className="mb-4">
         <div className="w-full bg-gray-200 rounded-full h-4">
           <div className="bg-green-600 h-4 rounded-full" style={{ width: `${Math.round(stats.enriched / stats.total * 100)}%` }}></div>
         </div>
       </div>
+      
+      {/* Active Job Status */}
+      {activeJob && (
+        <div className="mb-6 p-4 border border-blue-200 bg-blue-50 rounded-md">
+          <h3 className="text-lg font-medium mb-2">Active Enrichment Process</h3>
+          <p className="mb-2">
+            <span className="font-medium">Type:</span> {activeJob.job_type === 'reprocess_failed' ? 'Reprocessing Failed Items' : 'Processing Remaining Items'}
+          </p>
+          <p className="mb-2">
+            <span className="font-medium">Status:</span> {activeJob.status === 'pending' ? 'Pending' : 'Processing'}
+          </p>
+          <p className="mb-2">
+            <span className="font-medium">Started:</span> {activeJob.started_at ? new Date(activeJob.started_at).toLocaleString() : 'Not started yet'}
+          </p>
+          {activeJob.items_processed > 0 && (
+            <p className="mb-2">
+              <span className="font-medium">Items Processed:</span> {activeJob.items_processed}
+            </p>
+          )}
+          {activeJob.items_failed > 0 && (
+            <p className="mb-2">
+              <span className="font-medium">Items Failed:</span> {activeJob.items_failed}
+            </p>
+          )}
+        </div>
+      )}
+      
+      {/* Log Controls */}
+      <div className="mb-4">
+        <button 
+          onClick={() => setShowLogs(!showLogs)} 
+          className="govuk-button govuk-button--secondary"
+        >
+          {showLogs ? 'Hide Logs' : 'Show Logs'}
+        </button>
+        
+        {showLogs && (
+          <button 
+            onClick={fetchLogsAndJobStatus} 
+            className="govuk-button govuk-button--secondary ml-2"
+            disabled={loading}
+          >
+            Refresh Logs
+          </button>
+        )}
+      </div>
+      
+      {/* Logs Display */}
+      {showLogs && (
+        <div className="border border-gray-200 rounded-md overflow-hidden">
+          <div className="p-3 bg-gray-100 border-b border-gray-200 font-medium">
+            Enrichment Process Logs
+          </div>
+          
+          {loading ? (
+            <div className="p-6 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-govuk-blue mx-auto"></div>
+              <p className="mt-2">Loading logs...</p>
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="p-6 text-center text-gray-500">
+              No logs available. Logs will appear here when an enrichment process is running.
+            </div>
+          ) : (
+            <div className="overflow-y-auto max-h-96">
+              <table className="w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Time
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Level
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Message
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {logs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatTimestamp(log.timestamp)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={getLogLevelStyles(log.log_level)}>
+                          {log.log_level.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-pre-wrap">
+                        {log.message}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {hasMoreLogs && (
+            <div className="p-3 bg-gray-50 border-t border-gray-200 text-center">
+              <button 
+                className="text-blue-600 hover:text-blue-800 font-medium" 
+                onClick={fetchLogsAndJobStatus}
+              >
+                Load more logs
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
