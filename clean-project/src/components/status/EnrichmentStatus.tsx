@@ -36,8 +36,10 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
   const [hasMoreLogs, setHasMoreLogs] = useState(false);
   const [activeJob, setActiveJob] = useState<ActiveEnrichmentJob | null>(null);
   const [loading, setLoading] = useState(false);
+  const [updatingLogs, setUpdatingLogs] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [stats, setStats] = useState<StatsData>(initialStats);
+  const logsEndRef = React.useRef<HTMLTableCellElement>(null);
 
   // Function to fetch stats
   const fetchStats = async () => {
@@ -50,17 +52,44 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
   };
 
   // Function to fetch logs and job status
-  const fetchLogsAndJobStatus = async () => {
+  const fetchLogsAndJobStatus = async (initialLoad = false) => {
     try {
-      setLoading(true);
+      if (initialLoad) {
+        setLoading(true);
+      } else {
+        setUpdatingLogs(true);
+      }
       
       // Get active job
       const job = await getActiveEnrichmentJob();
       setActiveJob(job);
       
       // Get logs
-      const { logs, hasMore } = await getEnrichmentLogs(job?.id, 50);
-      setLogs(logs);
+      const { logs: newLogs, hasMore } = await getEnrichmentLogs(job?.id, 50);
+      
+      if (initialLoad) {
+        // Initial load, replace logs
+        setLogs(newLogs);
+      } else {
+        // Append new logs without duplicates
+        if (newLogs.length > 0) {
+          // Filter out logs we already have
+          const existingLogIds = new Set(logs.map(log => log.id));
+          const uniqueNewLogs = newLogs.filter(log => !existingLogIds.has(log.id));
+          
+          if (uniqueNewLogs.length > 0) {
+            setLogs(prevLogs => [...prevLogs, ...uniqueNewLogs]);
+            
+            // Scroll to end of logs if user is already near the bottom
+            setTimeout(() => {
+              if (logsEndRef.current) {
+                logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+          }
+        }
+      }
+      
       setHasMoreLogs(hasMore);
       
       // If we have an active job, show logs automatically
@@ -73,17 +102,18 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
       console.error('Error fetching logs:', error);
     } finally {
       setLoading(false);
+      setUpdatingLogs(false);
     }
   };
 
   // Set up polling for logs and job status when an enrichment job is active
   useEffect(() => {
     // Initial fetch
-    fetchLogsAndJobStatus();
+    fetchLogsAndJobStatus(true);
     
     // Set up polling if not already set
     if (!pollingInterval) {
-      const interval = setInterval(fetchLogsAndJobStatus, 5000); // Poll every 5 seconds
+      const interval = setInterval(() => fetchLogsAndJobStatus(false), 5000); // Poll every 5 seconds
       setPollingInterval(interval);
     }
     
@@ -103,7 +133,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
 
   return (
     <div className="mb-8">
-      <h2 className="govuk-heading-m">Data Enrichment Overview</h2>
+      <h2 className="govuk-heading-m">Enrichment Overview</h2>
       <div className="govuk-grid-row mb-6">
         <div className="govuk-grid-column-one-quarter">
           <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0">
@@ -196,11 +226,11 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
         
         {showLogs && (
           <button 
-            onClick={fetchLogsAndJobStatus} 
+            onClick={() => fetchLogsAndJobStatus(true)} 
             className="govuk-button govuk-button--secondary govuk-!-margin-left-2"
             disabled={loading}
           >
-            Refresh Logs
+            {loading ? 'Refreshing...' : 'Refresh Logs'}
           </button>
         )}
         
@@ -219,6 +249,12 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
         <div className="border border-gray-200 rounded-md overflow-hidden">
           <div className="p-3 bg-gray-100 border-b border-gray-200 font-medium">
             Enrichment Process Logs
+            {updatingLogs && (
+              <span className="inline-block ml-2 h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+              </span>
+            )}
           </div>
           
           {loading ? (
@@ -252,6 +288,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
                       <td className="govuk-table__cell govuk-!-white-space-pre-wrap">{log.message}</td>
                     </tr>
                   ))}
+                  <tr><td colSpan={3} ref={logsEndRef} className="govuk-table__cell"></td></tr>
                 </tbody>
               </table>
             </div>
@@ -261,7 +298,8 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
             <div className="p-3 bg-gray-50 border-t border-gray-200 text-center">
               <button 
                 className="govuk-button govuk-button--secondary" 
-                onClick={fetchLogsAndJobStatus}
+                onClick={() => fetchLogsAndJobStatus(true)}
+                disabled={loading}
               >
                 Load more logs
               </button>
@@ -842,7 +880,7 @@ const TabContent: React.FC<TabContentProps> = ({ activeTab }) => {
   if (loading && activeTab === 'overview') {
     return (
       <div className="flex justify-center my-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-govuk-blue"></div>
+        <div className="govuk-loader"></div>
       </div>
     );
   }
