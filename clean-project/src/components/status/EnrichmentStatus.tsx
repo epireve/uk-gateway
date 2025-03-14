@@ -39,7 +39,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
   const [updatingLogs, setUpdatingLogs] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [stats, setStats] = useState<StatsData>(initialStats);
-  const [autoRefreshLogs, setAutoRefreshLogs] = useState<boolean>(true);
+  const [autoRefreshLogs, setAutoRefreshLogs] = useState<boolean>(false);
   const logsEndRef = React.useRef<HTMLTableCellElement>(null);
 
   // Function to fetch stats
@@ -144,102 +144,76 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
       <div className="govuk-grid-row govuk-!-margin-bottom-6">
         <div className="govuk-grid-column-one-quarter">
           <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center">
-            <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.total.toLocaleString()}</h3>
-            <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Total Companies</p>
+            <p className="govuk-heading-l govuk-!-margin-bottom-1">{stats.total.toLocaleString()}</p>
+            <p className="govuk-body govuk-!-margin-0">Total Companies</p>
           </div>
         </div>
         <div className="govuk-grid-column-one-quarter">
-          <div className="govuk-panel govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#00703c', color: 'white' }}>
-            <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.enriched.toLocaleString()}</h3>
-            <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Enriched ({Math.round(stats.enriched / stats.total * 100)}%)</p>
+          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#00703c' }}>
+            <p className="govuk-heading-l govuk-!-margin-bottom-1">{stats.enriched.toLocaleString()}</p>
+            <p className="govuk-body govuk-!-margin-0">Enriched ({Math.round(stats.enriched / stats.total * 100)}%)</p>
           </div>
         </div>
         <div className="govuk-grid-column-one-quarter">
-          <div className="govuk-panel govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#ffdd00', color: 'black' }}>
-            <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.remaining.toLocaleString()}</h3>
-            <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Remaining ({Math.round(stats.remaining / stats.total * 100)}%)</p>
+          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#ffdd00', color: 'black' }}>
+            <p className="govuk-heading-l govuk-!-margin-bottom-1">{stats.remaining.toLocaleString()}</p>
+            <p className="govuk-body govuk-!-margin-0">Remaining ({Math.round(stats.remaining / stats.total * 100)}%)</p>
           </div>
         </div>
         <div className="govuk-grid-column-one-quarter">
-          <div className="govuk-panel govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#d4351c', color: 'white' }}>
-            <h3 className="govuk-heading-l govuk-!-margin-bottom-1 govuk-!-font-size-36">{stats.failed.toLocaleString()}</h3>
-            <p className="govuk-body govuk-!-margin-0 govuk-!-font-weight-bold">Failed</p>
+          <div className="govuk-panel govuk-panel--confirmation govuk-!-padding-4 govuk-!-margin-bottom-0 govuk-!-text-align-center" style={{ backgroundColor: '#d4351c' }}>
+            <p className="govuk-heading-l govuk-!-margin-bottom-1">{stats.failed.toLocaleString()}</p>
+            <p className="govuk-body govuk-!-margin-0">Failed</p>
           </div>
         </div>
       </div>
       
       {/* Progress Bar */}
       <div className="govuk-!-margin-bottom-6">
-        <h3 className="govuk-heading-s govuk-!-margin-bottom-2">Overall Progress</h3>
         <div className="govuk-progress-bar" style={{ height: '20px' }}>
           <div 
             className="govuk-progress-bar__fill" 
-            style={{ width: `${Math.round(stats.enriched / stats.total * 100)}%`, backgroundColor: '#00703c' }}
+            style={{ width: `${Math.round(stats.enriched / stats.total * 100)}%` }}
             role="progressbar"
             aria-valuenow={Math.round(stats.enriched / stats.total * 100)}
             aria-valuemin={0}
             aria-valuemax={100}
           ></div>
         </div>
-        <p className="govuk-body-s govuk-!-margin-top-1 govuk-!-text-align-right">
-          {Math.round(stats.enriched / stats.total * 100)}% Complete ({stats.enriched.toLocaleString()} of {stats.total.toLocaleString()} companies)
-        </p>
       </div>
       
       {/* Active Job Status */}
       {activeJob && (
-        <div className="govuk-inset-text govuk-!-margin-bottom-6">
-          <h3 className="govuk-heading-s govuk-!-margin-bottom-4">Active Enrichment Process</h3>
+        <div className="govuk-inset-text govuk-!-margin-bottom-6" style={{ backgroundColor: '#f3f2f1' }}>
+          <h3 className="govuk-heading-s govuk-!-margin-bottom-2">Active Enrichment Process</h3>
           
-          <div className="govuk-grid-row">
-            <div className="govuk-grid-column-one-half">
-              <dl className="govuk-summary-list govuk-summary-list--no-border">
-                <div className="govuk-summary-list__row">
-                  <dt className="govuk-summary-list__key">Type</dt>
-                  <dd className="govuk-summary-list__value">
-                    {activeJob.job_type === 'reprocess_failed' ? 'Reprocessing Failed Items' : 'Processing Remaining Items'}
-                  </dd>
-                </div>
-                <div className="govuk-summary-list__row">
-                  <dt className="govuk-summary-list__key">Status</dt>
-                  <dd className="govuk-summary-list__value">
-                    {activeJob.status === 'pending' ? 
-                      <span className="govuk-tag govuk-tag--yellow">Pending</span> : 
-                      <span className="govuk-tag govuk-tag--blue">Processing</span>
-                    }
-                  </dd>
-                </div>
-                <div className="govuk-summary-list__row">
-                  <dt className="govuk-summary-list__key">Started</dt>
-                  <dd className="govuk-summary-list__value">
-                    {activeJob.started_at ? new Date(activeJob.started_at).toLocaleString() : 'Not started yet'}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-            <div className="govuk-grid-column-one-half">
-              <dl className="govuk-summary-list govuk-summary-list--no-border">
-                {activeJob.total_items !== null && activeJob.total_items > 0 && (
-                  <div className="govuk-summary-list__row">
-                    <dt className="govuk-summary-list__key">Total Items</dt>
-                    <dd className="govuk-summary-list__value">{activeJob.total_items.toLocaleString()}</dd>
-                  </div>
-                )}
-                {activeJob.items_processed > 0 && (
-                  <div className="govuk-summary-list__row">
-                    <dt className="govuk-summary-list__key">Items Processed</dt>
-                    <dd className="govuk-summary-list__value">{activeJob.items_processed.toLocaleString()}</dd>
-                  </div>
-                )}
-                {activeJob.items_failed > 0 && (
-                  <div className="govuk-summary-list__row">
-                    <dt className="govuk-summary-list__key">Items Failed</dt>
-                    <dd className="govuk-summary-list__value">{activeJob.items_failed.toLocaleString()}</dd>
-                  </div>
-                )}
-              </dl>
-            </div>
-          </div>
+          <p className="govuk-body govuk-!-margin-bottom-2">
+            <strong>Type:</strong> {activeJob.job_type === 'reprocess_failed' ? 'Reprocessing Failed Items' : 'Processing Remaining Items'}
+          </p>
+          <p className="govuk-body govuk-!-margin-bottom-2">
+            <strong>Status:</strong> {activeJob.status === 'pending' ? 'Pending' : 'Processing'}
+          </p>
+          <p className="govuk-body govuk-!-margin-bottom-2">
+            <strong>Started:</strong> {activeJob.started_at ? new Date(activeJob.started_at).toLocaleString() : 'Not started yet'}
+          </p>
+          
+          {activeJob.total_items !== null && activeJob.total_items > 0 && (
+            <p className="govuk-body govuk-!-margin-bottom-2">
+              <strong>Total Items:</strong> {activeJob.total_items.toLocaleString()}
+            </p>
+          )}
+          
+          {activeJob.items_processed > 0 && (
+            <p className="govuk-body govuk-!-margin-bottom-2">
+              <strong>Items Processed:</strong> {activeJob.items_processed.toLocaleString()}
+            </p>
+          )}
+          
+          {activeJob.items_failed > 0 && (
+            <p className="govuk-body govuk-!-margin-bottom-2">
+              <strong>Items Failed:</strong> {activeJob.items_failed.toLocaleString()}
+            </p>
+          )}
           
           {/* Add progress bar for active job */}
           {activeJob.progress_percentage !== null && activeJob.progress_percentage > 0 && (
@@ -313,24 +287,14 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
       {/* Logs Display */}
       {showLogs && (
         <div className="govuk-!-margin-bottom-6">
-          <div className="govuk-panel govuk-panel--light-grey govuk-!-padding-0 govuk-!-margin-bottom-0">
-            <div className="govuk-!-padding-4 govuk-!-border-bottom-1">
-              <div className="govuk-grid-row">
-                <div className="govuk-grid-column-three-quarters">
-                  <h3 className="govuk-heading-s govuk-!-margin-bottom-0">Enrichment Process Logs</h3>
-                </div>
-                <div className="govuk-grid-column-one-quarter govuk-!-text-align-right">
-                  {updatingLogs && (
-                    <span className="govuk-hint">
-                      <span className="inline-block ml-2 h-4 w-4 govuk-!-margin-right-1">
-                        <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-blue-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                      </span>
-                      Updating...
-                    </span>
-                  )}
-                </div>
-              </div>
+          <div className="app-panel app-panel--border">
+            <div className="govuk-!-padding-3" style={{ backgroundColor: '#f3f2f1', borderBottom: '1px solid #b1b4b6' }}>
+              <h3 className="govuk-heading-s govuk-!-margin-bottom-0">Enrichment Process Logs</h3>
+              {updatingLogs && (
+                <span className="govuk-hint govuk-!-margin-bottom-0 govuk-!-margin-top-1">
+                  Updating...
+                </span>
+              )}
             </div>
             
             {loading ? (
@@ -339,11 +303,11 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
                 <p className="govuk-body govuk-!-margin-top-2">Loading logs...</p>
               </div>
             ) : logs.length === 0 ? (
-              <div className="govuk-!-padding-6 govuk-!-text-align-center govuk-hint">
-                No logs available. Logs will appear here when an enrichment process is running.
+              <div className="govuk-!-padding-6 govuk-!-text-align-center">
+                <p className="govuk-body govuk-hint">No logs available. Logs will appear here when an enrichment process is running.</p>
               </div>
             ) : (
-              <div className="govuk-!-overflow-y-auto" style={{ maxHeight: '30rem' }}>
+              <div style={{ maxHeight: '24rem', overflowY: 'auto' }}>
                 <table className="govuk-table govuk-!-margin-bottom-0">
                   <thead className="govuk-table__head">
                     <tr className="govuk-table__row">
@@ -364,7 +328,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
                             {log.log_level.toUpperCase()}
                           </span>
                         </td>
-                        <td className="govuk-table__cell govuk-!-white-space-pre-wrap">{log.message}</td>
+                        <td className="govuk-table__cell" style={{ whiteSpace: 'pre-wrap' }}>{log.message}</td>
                       </tr>
                     ))}
                     <tr><td colSpan={3} ref={logsEndRef} className="govuk-table__cell"></td></tr>
@@ -374,7 +338,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
             )}
             
             {hasMoreLogs && (
-              <div className="govuk-!-padding-4 govuk-!-text-align-center govuk-!-border-top-1">
+              <div className="govuk-!-padding-3 govuk-!-text-align-center" style={{ borderTop: '1px solid #b1b4b6' }}>
                 <button 
                   className="govuk-button govuk-button--secondary" 
                   onClick={() => fetchLogsAndJobStatus(true)}
@@ -1064,43 +1028,31 @@ export const EnrichmentStatus: React.FC = () => {
       <div className="govuk-main-wrapper">
         <div className="govuk-grid-row">
           <div className="govuk-grid-column-full">
-            <h1 className="govuk-heading-xl govuk-!-margin-bottom-4">Data Enrichment Status</h1>
-            
-            <p className="govuk-body-l govuk-!-margin-bottom-6">
-              This page allows you to view and manage the data enrichment process. You can view the current status, 
-              check failed enrichments, and trigger enrichment processes for both failed items and remaining companies.
-            </p>
+            <h1 className="govuk-heading-xl govuk-!-margin-bottom-6">Data Enrichment Status</h1>
           
             {/* Control panel with settings */}
-            <div className="govuk-panel govuk-panel--light-grey govuk-!-padding-4 govuk-!-margin-bottom-6">
-              <div className="govuk-grid-row">
-                <div className="govuk-grid-column-full">
-                  <h2 className="govuk-heading-m govuk-!-margin-bottom-3">Settings</h2>
-                  <div className="govuk-form-group govuk-!-margin-bottom-0">
-                    <div className="govuk-checkboxes">
-                      <div className="govuk-checkboxes__item">
-                        <input 
-                          type="checkbox"
-                          id="auto-switch-tabs" 
-                          className="govuk-checkboxes__input"
-                          checked={autoSwitchTabs} 
-                          onChange={() => setAutoSwitchTabs(!autoSwitchTabs)} 
-                        />
-                        <label className="govuk-label govuk-checkboxes__label" htmlFor="auto-switch-tabs">
-                          Auto-switch to active job tab
-                        </label>
-                      </div>
-                    </div>
-                  </div>
+            <div className="govuk-form-group govuk-!-margin-bottom-6">
+              <div className="govuk-checkboxes">
+                <div className="govuk-checkboxes__item">
+                  <input 
+                    type="checkbox"
+                    id="auto-switch-tabs" 
+                    className="govuk-checkboxes__input"
+                    checked={autoSwitchTabs} 
+                    onChange={() => setAutoSwitchTabs(!autoSwitchTabs)} 
+                  />
+                  <label className="govuk-label govuk-checkboxes__label" htmlFor="auto-switch-tabs">
+                    Auto-switch to active job tab
+                  </label>
                 </div>
               </div>
             </div>
             
             <div className="govuk-tabs" data-module="govuk-tabs">
-              <ul className="govuk-tabs__list govuk-!-margin-bottom-0 govuk-!-border-bottom-width-2">
+              <ul className="govuk-tabs__list">
                 <li className={`govuk-tabs__list-item ${activeTab === 'overview' ? 'govuk-tabs__list-item--selected' : ''}`}>
                   <a 
-                    className="govuk-tabs__tab govuk-!-font-weight-bold" 
+                    className="govuk-tabs__tab" 
                     href="#overview" 
                     onClick={(e) => { e.preventDefault(); setActiveTab('overview'); }}
                     aria-selected={activeTab === 'overview'}
@@ -1110,7 +1062,7 @@ export const EnrichmentStatus: React.FC = () => {
                 </li>
                 <li className={`govuk-tabs__list-item ${activeTab === 'remaining' ? 'govuk-tabs__list-item--selected' : ''}`}>
                   <a 
-                    className="govuk-tabs__tab govuk-!-font-weight-bold" 
+                    className="govuk-tabs__tab" 
                     href="#remaining" 
                     onClick={(e) => { e.preventDefault(); setActiveTab('remaining'); }}
                     aria-selected={activeTab === 'remaining'}
@@ -1125,7 +1077,7 @@ export const EnrichmentStatus: React.FC = () => {
                 </li>
                 <li className={`govuk-tabs__list-item ${activeTab === 'failed' ? 'govuk-tabs__list-item--selected' : ''}`}>
                   <a 
-                    className="govuk-tabs__tab govuk-!-font-weight-bold" 
+                    className="govuk-tabs__tab" 
                     href="#failed" 
                     onClick={(e) => { e.preventDefault(); setActiveTab('failed'); }}
                     aria-selected={activeTab === 'failed'}
@@ -1140,7 +1092,7 @@ export const EnrichmentStatus: React.FC = () => {
                 </li>
               </ul>
               
-              <div className="govuk-tabs__panel govuk-!-padding-top-6" id={activeTab}>
+              <div className="govuk-tabs__panel" id={activeTab}>
                 <TabContent activeTab={activeTab} />
               </div>
             </div>
