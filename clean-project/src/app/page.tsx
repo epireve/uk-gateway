@@ -8,8 +8,11 @@ const CompanySearchLoading = () => (
   </div>
 );
 
-// Import the client component wrapper instead of using dynamic directly in this server component
-import ClientCompanySearch from '@/components/ClientCompanySearch';
+// Import the client component wrapper
+import dynamic from 'next/dynamic';
+
+// Use dynamic import for ClientCompanySearch
+const ClientCompanySearch = dynamic(() => import('../components/ClientCompanySearch'), { ssr: true });
 
 export default function Home() {
   return (
