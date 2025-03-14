@@ -1,8 +1,4 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/clean-project/$1" }],
-  "buildCommand": "cd clean-project && npm install && npm run build",
-  "outputDirectory": "clean-project/.next",
-  "devCommand": "cd clean-project && npm run dev",
-  "installCommand": "cd clean-project && npm install",
-  "framework": "nextjs"
-} 
+  "framework": "nextjs",
+  "outputDirectory": ".next"
+}
