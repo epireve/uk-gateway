@@ -411,8 +411,31 @@ export async function triggerEnrichment(type: 'failed' | 'remaining'): Promise<{
   message: string;
 }> {
   try {
+    // First, check if the enrichment_jobs table exists
+    const { error: tableCheckError } = await supabase
+      .from('enrichment_jobs')
+      .select('id')
+      .limit(1);
+    
+    if (tableCheckError) {
+      console.error('Enrichment jobs table check failed:', tableCheckError);
+      
+      // If the table doesn't exist, we should create it
+      if (tableCheckError.code === '42P01') { // PostgreSQL code for "table does not exist"
+        return {
+          success: false,
+          message: `The enrichment_jobs table doesn't exist in the database. Please run the database setup script.`
+        };
+      }
+      
+      return {
+        success: false,
+        message: `Failed to check enrichment_jobs table: ${tableCheckError.message}`
+      };
+    }
+
     // Create a record in the enrichment_jobs table to signal the server to start enrichment
-    const { error } = await supabase
+    const { error, data } = await supabase
       .from('enrichment_jobs')
       .insert([
         {
@@ -420,7 +443,8 @@ export async function triggerEnrichment(type: 'failed' | 'remaining'): Promise<{
           status: 'pending',
           created_at: new Date().toISOString(),
         }
-      ]);
+      ])
+      .select();
 
     if (error) {
       console.error('Error triggering enrichment:', error);
@@ -430,15 +454,21 @@ export async function triggerEnrichment(type: 'failed' | 'remaining'): Promise<{
       };
     }
 
+    console.log('Successfully created enrichment job:', data);
+    
     return {
       success: true,
       message: `Successfully triggered ${type} enrichment process`
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error triggering enrichment:', error);
     return {
       success: false,
-      message: `Failed to trigger ${type} enrichment: ${error.message || 'Unknown error'}`
+      message: `Failed to trigger ${type} enrichment: ${
+        error instanceof Error 
+          ? error.message 
+          : String(error) || 'Unknown error'
+      }`
     };
   }
 } 

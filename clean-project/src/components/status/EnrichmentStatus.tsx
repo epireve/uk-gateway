@@ -220,13 +220,25 @@ const RemainingItemsTab: React.FC = () => {
     setMessage({ text: '', type: '' });
     try {
       const result = await triggerEnrichment('remaining');
+      if (!result) {
+        setMessage({ 
+          text: 'Failed to trigger enrichment: No response from server', 
+          type: 'error' 
+        });
+        return;
+      }
+      
       setMessage({ 
-        text: result.message, 
+        text: result.message || 'Operation completed, but no status message was returned', 
         type: result.success ? 'success' : 'error' 
       });
     } catch (error) {
       console.error('Error processing remaining items:', error);
-      setMessage({ text: 'Failed to start processing', type: 'error' });
+      const errorMessage = error instanceof Error 
+        ? `Failed to start processing: ${error.message}` 
+        : 'Failed to start processing due to an unknown error';
+      
+      setMessage({ text: errorMessage, type: 'error' });
     } finally {
       setProcessing(false);
     }
