@@ -39,6 +39,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
   const [updatingLogs, setUpdatingLogs] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [stats, setStats] = useState<StatsData>(initialStats);
+  const [autoRefreshLogs, setAutoRefreshLogs] = useState<boolean>(true);
   const logsEndRef = React.useRef<HTMLTableCellElement>(null);
 
   // Function to fetch stats
@@ -111,8 +112,14 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
     // Initial fetch
     fetchLogsAndJobStatus(true);
     
-    // Set up polling if not already set
-    if (!pollingInterval) {
+    // Clean up any existing interval first
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+    
+    // Set up polling if auto-refresh is enabled
+    if (autoRefreshLogs) {
       const interval = setInterval(() => fetchLogsAndJobStatus(false), 5000); // Poll every 5 seconds
       setPollingInterval(interval);
     }
@@ -123,7 +130,7 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
         clearInterval(pollingInterval);
       }
     };
-  }, []);
+  }, [autoRefreshLogs]);
 
   // Function to format timestamp
   const formatTimestamp = (timestamp: string) => {
@@ -225,13 +232,30 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStat
         </button>
         
         {showLogs && (
-          <button 
-            onClick={() => fetchLogsAndJobStatus(true)} 
-            className="govuk-button govuk-button--secondary govuk-!-margin-left-2"
-            disabled={loading}
-          >
-            {loading ? 'Refreshing...' : 'Refresh Logs'}
-          </button>
+          <>
+            <button 
+              onClick={() => fetchLogsAndJobStatus(true)} 
+              className="govuk-button govuk-button--secondary govuk-!-margin-left-2"
+              disabled={loading}
+            >
+              {loading ? 'Refreshing...' : 'Refresh Logs'}
+            </button>
+            
+            <div className="govuk-checkboxes govuk-checkboxes--small govuk-!-display-inline-block govuk-!-margin-left-4">
+              <div className="govuk-checkboxes__item">
+                <input 
+                  type="checkbox"
+                  id="auto-refresh-logs" 
+                  className="govuk-checkboxes__input"
+                  checked={autoRefreshLogs} 
+                  onChange={() => setAutoRefreshLogs(!autoRefreshLogs)} 
+                />
+                <label className="govuk-label govuk-checkboxes__label" htmlFor="auto-refresh-logs">
+                  Auto-refresh logs
+                </label>
+              </div>
+            </div>
+          </>
         )}
         
         {/* Add a separate button to refresh stats */}
