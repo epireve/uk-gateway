@@ -393,7 +393,7 @@ export const CompanySearch: React.FC = () => {
                     disabled={isLoadingOptions}
                     aria-label="Filter by type and rating"
                   >
-                    <option value="all">✓ All types & ratings</option>
+                    <option value="all">All types & ratings</option>
                     {typeRatingOptions.map(type => (
                       <option key={type} value={type}>
                         {type}
