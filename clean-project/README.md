@@ -52,6 +52,7 @@ Create a `.env` file in the root directory with the following variables:
 # Supabase Credentials
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 # Companies House API
 COMPANIES_HOUSE_API_BASE_URL=https://api.company-information.service.gov.uk
@@ -145,3 +146,68 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Companies House](https://www.gov.uk/government/organisations/companies-house) for providing the public data API
 - [Supabase](https://supabase.io/) for the backend infrastructure
 - [Next.js](https://nextjs.org/) for the frontend framework
+
+## Database Setup for Enrichment Features
+
+The application uses several tables in Supabase for data enrichment functionality:
+
+1. `companies` - Main table for storing company data
+2. `failed_enrichments` - Table for tracking failed enrichment attempts
+3. `enrichment_jobs` - Table for managing enrichment processes
+4. `enrichment_logs` - Table for storing logs from enrichment processes
+
+### Setting Up Required Tables
+
+To create the required tables:
+
+1. Make sure your Supabase environment variables are set in your `.env` file:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   ```
+
+2. Run the database setup scripts:
+   ```bash
+   # If you're using npm
+   npm run setup-db
+
+   # If you're using pnpm
+   pnpm run setup-db
+   ```
+
+3. Alternatively, you can execute the scripts directly:
+   ```bash
+   npx tsx src/scripts/setup-enrichment-jobs.ts
+   ```
+
+### Creating Tables Manually
+
+If you encounter issues with the scripts, you can manually create the tables in Supabase:
+
+1. Navigate to your Supabase project dashboard
+2. Go to the SQL Editor
+3. Run the following SQL scripts:
+   - `src/scripts/create-companies-table.sql`
+   - `src/scripts/create-failed-enrichments-table.sql`
+   - `src/scripts/create-enrichment-jobs-table.sql`
+
+Then add the `enrichment_logs` table:
+
+```sql
+CREATE TABLE IF NOT EXISTS enrichment_logs (
+  id SERIAL PRIMARY KEY,
+  job_id INTEGER REFERENCES enrichment_jobs(id),
+  log_level TEXT NOT NULL,
+  message TEXT NOT NULL,
+  timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  metadata JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_enrichment_logs_job_id ON enrichment_logs(job_id);
+CREATE INDEX IF NOT EXISTS idx_enrichment_logs_timestamp ON enrichment_logs(timestamp);
+
+ALTER TABLE enrichment_logs ENABLE ROW LEVEL SECURITY;
+
+COMMENT ON TABLE enrichment_logs IS 'Table to store logs from data enrichment processes';
+```
