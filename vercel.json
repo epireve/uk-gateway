@@ -1,10 +1,11 @@
 {
-  "builds": [
-    {
-      "src": "clean-project/package.json",
-      "use": "@vercel/next"
-    }
-  ],
+  "version": 2,
+  "framework": "nextjs",
+  "buildCommand": "cd clean-project && npm run build",
+  "installCommand": "npm install && cd clean-project && npm install",
+  "outputDirectory": "clean-project/.next",
+  "regions": ["iad1"],
+  "cleanUrls": true,
   "routes": [
     {
       "src": "/(.*)",
