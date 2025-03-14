@@ -232,15 +232,17 @@ export const CompanySearch: React.FC = () => {
     setCurrentPage(1);
     
     // Clear all filter parameters from URL
-    updateUrlParams({
-      enriched: null,
-      location: null,
-      route: null,
-      type: null,
-      // Keep search term and reset page to 1
-      page: null,
-      q: searchTerm?.trim() || null
-    });
+    // Using window.location directly to ensure URL is fully cleared
+    const url = new URL(window.location.href);
+    url.search = '';
+    
+    // If there was a search term, preserve it
+    if (searchTerm?.trim()) {
+      url.searchParams.set('q', searchTerm.trim());
+    }
+    
+    // Replace the URL without triggering a navigation
+    window.history.replaceState({}, '', url.toString());
     
     // Reload companies with no filters
     loadCompanies(1, searchTerm);
@@ -394,7 +396,7 @@ export const CompanySearch: React.FC = () => {
                     <option value="all">✓ All types & ratings</option>
                     {typeRatingOptions.map(type => (
                       <option key={type} value={type}>
-                        {selectedTypeRating === type ? '✓ ' : ''}{type}
+                        {type}
                       </option>
                     ))}
                   </select>
