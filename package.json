@@ -1,0 +1,15 @@
+{
+  "name": "uk-gateway",
+  "version": "1.0.0",
+  "description": "UK Company Portal",
+  "private": true,
+  "scripts": {
+    "dev": "cd clean-project && npm run dev",
+    "build": "cd clean-project && npm run build",
+    "start": "cd clean-project && npm run start",
+    "lint": "cd clean-project && npm run lint"
+  },
+  "workspaces": [
+    "clean-project"
+  ]
+} 
