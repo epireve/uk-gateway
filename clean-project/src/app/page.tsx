@@ -1,11 +1,4 @@
 import { Suspense } from 'react';
-import dynamic from 'next/dynamic';
-
-// Dynamically import the CompanySearch component with ssr disabled
-const CompanySearch = dynamic(
-  () => import('@/components/CompanySearch').then(mod => ({ default: mod.CompanySearch })),
-  { ssr: false }
-);
 
 // Loading component
 const CompanySearchLoading = () => (
@@ -14,6 +7,9 @@ const CompanySearchLoading = () => (
     <span className="ml-3">Loading search...</span>
   </div>
 );
+
+// Import the client component wrapper instead of using dynamic directly in this server component
+import ClientCompanySearch from '@/components/ClientCompanySearch';
 
 export default function Home() {
   return (
@@ -28,7 +24,7 @@ export default function Home() {
         </div>
         
         <Suspense fallback={<CompanySearchLoading />}>
-          <CompanySearch />
+          <ClientCompanySearch />
         </Suspense>
       </div>
     </main>
