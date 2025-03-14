@@ -1,6 +1,17 @@
 import { supabase } from './supabase';
 import { EnrichedCompany } from './models';
 
+// Define failed enrichment item interface
+export interface FailedEnrichmentItem {
+  id: string;
+  company_name: string;
+  company_id: string;
+  retry_count: number;
+  last_error?: string;
+  updated_at: string;
+  created_at: string;
+}
+
 /**
  * Get all companies from Supabase with pagination
  * @param page Page number (starting from 1)
@@ -269,4 +280,165 @@ export async function getTypeRatingOptions(): Promise<string[]> {
     );
 
   return typeRatings;
+}
+
+/**
+ * Get enrichment status statistics
+ * @returns Statistics about data enrichment status
+ */
+export async function getEnrichmentStats(): Promise<{
+  total: number;
+  enriched: number;
+  failed: number;
+  remaining: number;
+}> {
+  // Get total count
+  const { count: total } = await supabase
+    .from('companies')
+    .select('*', { count: 'exact', head: true });
+
+  // Get count of enriched records
+  const { count: enriched } = await supabase
+    .from('companies')
+    .select('*', { count: 'exact', head: true })
+    .not('company_number', 'is', null);
+
+  // Get count of failed records from failed_enrichments table
+  const { count: failed } = await supabase
+    .from('failed_enrichments')
+    .select('*', { count: 'exact', head: true });
+
+  // Calculate remaining
+  const remaining = total ? total - (enriched || 0) : 0;
+
+  return {
+    total: total || 0,
+    enriched: enriched || 0,
+    failed: failed || 0,
+    remaining,
+  };
+}
+
+/**
+ * Get list of failed enrichments
+ * @param page Page number (starting from 1)
+ * @param pageSize Number of items per page
+ * @returns List of failed enrichments with pagination
+ */
+export async function getFailedEnrichments(
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{
+  items: FailedEnrichmentItem[];
+  count: number;
+  currentPage: number;
+  totalPages: number;
+}> {
+  // Calculate range for pagination
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const { data, error, count } = await supabase
+    .from('failed_enrichments')
+    .select('*', { count: 'exact' })
+    .range(from, to)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching failed enrichments:', error);
+    throw error;
+  }
+
+  // Calculate total pages
+  const totalPages = count ? Math.ceil(count / pageSize) : 0;
+
+  return {
+    items: (data || []) as FailedEnrichmentItem[],
+    count: count || 0,
+    currentPage: page,
+    totalPages,
+  };
+}
+
+/**
+ * Get list of companies that need enrichment
+ * @param page Page number (starting from 1)
+ * @param pageSize Number of items per page
+ * @returns List of companies needing enrichment with pagination
+ */
+export async function getRemainingCompanies(
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{
+  items: EnrichedCompany[];
+  count: number;
+  currentPage: number;
+  totalPages: number;
+}> {
+  // Calculate range for pagination
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const { data, error, count } = await supabase
+    .from('companies')
+    .select('*', { count: 'exact' })
+    .is('company_number', null)
+    .range(from, to)
+    .order('original_name', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching remaining companies:', error);
+    throw error;
+  }
+
+  // Calculate total pages
+  const totalPages = count ? Math.ceil(count / pageSize) : 0;
+
+  return {
+    items: (data || []) as EnrichedCompany[],
+    count: count || 0,
+    currentPage: page,
+    totalPages,
+  };
+}
+
+/**
+ * Trigger enrichment process for failed items
+ * @returns Status of the operation
+ */
+export async function triggerEnrichment(type: 'failed' | 'remaining'): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    // Create a record in the enrichment_jobs table to signal the server to start enrichment
+    const { error } = await supabase
+      .from('enrichment_jobs')
+      .insert([
+        {
+          job_type: type === 'failed' ? 'reprocess_failed' : 'enrich_remaining',
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        }
+      ]);
+
+    if (error) {
+      console.error('Error triggering enrichment:', error);
+      return {
+        success: false,
+        message: `Failed to trigger ${type} enrichment: ${error.message}`
+      };
+    }
+
+    return {
+      success: true,
+      message: `Successfully triggered ${type} enrichment process`
+    };
+  } catch (error: any) {
+    console.error('Error triggering enrichment:', error);
+    return {
+      success: false,
+      message: `Failed to trigger ${type} enrichment: ${error.message || 'Unknown error'}`
+    };
+  }
 } 
