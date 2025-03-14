@@ -1,9 +1,6 @@
 {
-  "framework": "nextjs",
-  "projectSettings": {
-    "framework": "nextjs",
-    "buildCommand": "cd clean-project && pnpm install && pnpm build",
-    "outputDirectory": "clean-project/.next",
-    "rootDirectory": "clean-project"
-  }
+  "buildCommand": "cd clean-project && pnpm install && pnpm build",
+  "outputDirectory": "clean-project/.next",
+  "installCommand": "cd clean-project && pnpm install",
+  "framework": "nextjs"
 }
