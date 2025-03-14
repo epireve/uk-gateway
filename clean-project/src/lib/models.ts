@@ -105,6 +105,8 @@ export const EnrichedCompanySchema = z.object({
   external_registration_number: z.string().nullable().optional(),
   last_full_members_list_date: z.string().nullable().optional(),
   enrichment_date: z.string().optional(), // The date/time when the data was enriched
+  // Add a field to store any additional fields not captured by our schema
+  additional_fields: z.record(z.string(), z.any()).optional(),
 });
 
 export type EnrichedCompany = z.infer<typeof EnrichedCompanySchema>; 

@@ -3,10 +3,11 @@ import axios from 'axios';
 import fs from 'fs-extra';
 import path from 'path';
 import dotenv from 'dotenv';
+import pLimit from 'p-limit';
 import { 
-  CompanyProfileSchema,
   EnrichedCompany
 } from '../lib/models';
+import { getKeyManager } from '../lib/key-manager';
 
 // Load environment variables
 dotenv.config();
@@ -15,7 +16,7 @@ dotenv.config();
 const requiredEnvVars = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-  'COMPANIES_HOUSE_API_KEY',
+  'COMPANIES_HOUSE_API_KEYS'
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -25,13 +26,23 @@ for (const envVar of requiredEnvVars) {
   }
 }
 
+// Get API keys from environment variables
+const apiKeys = process.env.COMPANIES_HOUSE_API_KEYS!.split(',').map(key => key.trim());
+if (apiKeys.length === 0) {
+  console.error('Error: No API keys provided in COMPANIES_HOUSE_API_KEYS');
+  process.exit(1);
+}
+  
+// Initialize key manager
+const keyManager = getKeyManager(apiKeys);
+console.log(`Initialized key manager with ${apiKeys.length} API keys`);
+
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Companies House API configuration
-const companiesHouseApiKey = process.env.COMPANIES_HOUSE_API_KEY!;
 const companiesHouseBaseUrl = 'https://api.company-information.service.gov.uk';
 
 // Set up logging directory
@@ -44,17 +55,18 @@ const processLogFile = path.join(logDir, `reprocess-failed-${currentDate}.log`);
 const successLogFile = path.join(logDir, `reprocess-success-${currentDate}.log`);
 const failedLogFile = path.join(logDir, `reprocess-failed-${currentDate}.log`);
 
-// Batch and rate limit settings
+// Concurrency and rate limit settings
 const BATCH_SIZE = 50; // Smaller batch size for reprocessing
-const RATE_LIMIT = process.env.API_RATE_LIMIT 
-  ? parseInt(process.env.API_RATE_LIMIT) 
-  : 600; // Default to 600 per 5 minutes
-const WINDOW_SIZE = 5 * 60 * 1000; // 5 minutes in milliseconds
 const DELAY_BETWEEN_REQUESTS = 500; // ms
 const MAX_RETRY_COUNT = 5;
+const CONCURRENCY_LIMIT = process.env.CONCURRENCY_LIMIT 
+  ? parseInt(process.env.CONCURRENCY_LIMIT) 
+  : Math.min(3, apiKeys.length * 2); // Default to 3 or double the number of keys, whichever is smaller
+
+console.log(`Using concurrency limit of ${CONCURRENCY_LIMIT}`);
 
 // Create logger function
-function logToFile(filePath: string, data: any) {
+function logToFile(filePath: string, data: unknown): void {
   const timestamp = new Date().toISOString();
   const logEntry = typeof data === 'string' 
     ? `${timestamp} - ${data}\n` 
@@ -64,11 +76,14 @@ function logToFile(filePath: string, data: any) {
 }
 
 // Log process start
-logToFile(processLogFile, `Starting failed records reprocessing`);
+logToFile(processLogFile, `Starting failed records reprocessing with ${apiKeys.length} API keys and concurrency ${CONCURRENCY_LIMIT}`);
 console.log(`Starting failed records reprocessing. Logs will be saved to ${logDir}`);
 
-// Function to search for a company in Companies House
+// Function to search for a company in Companies House with key rotation
 async function searchCompany(companyName: string) {
+  // Get the next available API key
+  const apiKey = keyManager.getNextKey();
+  
   try {
     const response = await axios.get(
       `${companiesHouseBaseUrl}/search/companies`,
@@ -77,7 +92,7 @@ async function searchCompany(companyName: string) {
           q: companyName,
         },
         auth: {
-          username: companiesHouseApiKey,
+          username: apiKey,
           password: '',
         },
         headers: {
@@ -86,28 +101,46 @@ async function searchCompany(companyName: string) {
       }
     );
 
+    // Register successful request with key manager
+    keyManager.registerRequest(apiKey);
+    
     return response.data.items?.[0] || null;
-  } catch (error: any) {
-    const statusCode = error.response?.status;
+  } catch (error: unknown) {
+    const errorObj = error as Error & { response?: { status?: number } };
+    const statusCode = errorObj.response?.status;
+    logToFile(failedLogFile, {
+      companyName,
+      error: errorObj.message,
+      httpStatus: statusCode,
+      action: 'search',
+      timestamp: new Date().toISOString(),
+      apiKey: apiKey.substring(0, 8) + '...',
+    });
+
+    // Still register the request with key manager even if it failed
+    keyManager.registerRequest(apiKey);
     
     if (statusCode === 429) {
-      // Rate limit exceeded
+      // Rate limit exceeded for this key
       throw new Error(`Rate limit exceeded when searching for ${companyName}`);
     }
 
-    console.error(`Error searching for company ${companyName}:`, error.message);
+    console.error(`Error searching for company ${companyName}:`, errorObj.message);
     return null;
   }
 }
 
-// Function to get company profile from Companies House
+// Function to get company profile from Companies House with key rotation
 async function getCompanyProfile(companyNumber: string) {
+  // Get the next available API key
+  const apiKey = keyManager.getNextKey();
+  
   try {
     const response = await axios.get(
       `${companiesHouseBaseUrl}/company/${companyNumber}`,
       {
         auth: {
-          username: companiesHouseApiKey,
+          username: apiKey,
           password: '',
         },
         headers: {
@@ -116,24 +149,48 @@ async function getCompanyProfile(companyNumber: string) {
       }
     );
 
-    // Validate the response against our schema
-    return CompanyProfileSchema.parse(response.data);
-  } catch (error: any) {
-    const statusCode = error.response?.status;
+    // Register successful request with key manager
+    keyManager.registerRequest(apiKey);
+    
+    // Return the full response to ensure we capture all fields
+    return response.data;
+  } catch (error: unknown) {
+    const errorObj = error as Error & { response?: { status?: number } };
+    const statusCode = errorObj.response?.status;
+    logToFile(failedLogFile, {
+      companyNumber,
+      error: errorObj.message,
+      httpStatus: statusCode,
+      action: 'profile',
+      timestamp: new Date().toISOString(),
+      apiKey: apiKey.substring(0, 8) + '...',
+    });
+
+    // Still register the request with key manager even if it failed
+    keyManager.registerRequest(apiKey);
     
     if (statusCode === 429) {
-      // Rate limit exceeded
+      // Rate limit exceeded for this key
       throw new Error(`Rate limit exceeded when fetching profile for ${companyNumber}`);
     }
 
-    console.error(`Error fetching company profile for ${companyNumber}:`, error.message);
+    console.error(`Error fetching company profile for ${companyNumber}:`, errorObj.message);
     return null;
   }
 }
 
+// Define a type for the failed record
+interface FailedRecord {
+  id: string;
+  name: string;
+  retryCount: number;
+  source: 'db' | 'log';
+  dbRecordId?: string;
+}
+
 // Function to collect failed records from Supabase and log files
-async function collectFailedRecords() {
-  const failedRecords = new Map<string, any>();
+async function collectFailedRecords(): Promise<FailedRecord[]> {
+  const failedRecords = new Map<string, FailedRecord>();
   
   // Get records from Supabase
   const { data: failedFromDb, error } = await supabase
@@ -196,7 +253,7 @@ async function collectFailedRecords() {
                 });
               }
             }
-          } catch (e) {
+          } catch (_) {
             // Skip malformed log entries
           }
         }
@@ -215,7 +272,209 @@ async function collectFailedRecords() {
   return recordsArray;
 }
 
-// Function to reprocess failed records with rate limiting
+// Function to process a single failed record
+async function processFailedRecord(record: FailedRecord, stats: { 
+  successful: number; 
+  failed: number;
+  apiCallsMade: number;
+}) {
+  try {
+    // Get company details from Supabase
+    const { data: company, error: companyError } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', record.id)
+      .single();
+    
+    if (companyError) {
+      console.error(`Error fetching company ${record.id}:`, companyError.message);
+      logToFile(failedLogFile, {
+        companyId: record.id,
+        companyName: record.name,
+        error: `Failed to fetch from Supabase: ${companyError.message}`,
+        timestamp: new Date().toISOString(),
+        retryCount: record.retryCount + 1,
+      });
+      stats.failed++;
+      return;
+    }
+    
+    if (!company) {
+      logToFile(failedLogFile, {
+        companyId: record.id,
+        companyName: record.name,
+        error: 'Company not found in database',
+        timestamp: new Date().toISOString(),
+        retryCount: record.retryCount + 1,
+      });
+      stats.failed++;
+      return;
+    }
+    
+    // Step 1: Search for the company
+    const searchResult = await searchCompany(company.original_name);
+    stats.apiCallsMade++;
+    
+    // Add delay between requests
+    await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REQUESTS));
+    
+    if (!searchResult) {
+      // Update retry count in failed_enrichments
+      if (record.source === 'db') {
+        await supabase
+          .from('failed_enrichments')
+          .update({ retry_count: record.retryCount + 1 })
+          .eq('id', record.dbRecordId);
+      }
+      
+      logToFile(failedLogFile, {
+        companyId: record.id,
+        companyName: record.name,
+        error: 'No search results found after retry',
+        timestamp: new Date().toISOString(),
+        retryCount: record.retryCount + 1,
+      });
+      stats.failed++;
+      return;
+    }
+    
+    // Step 2: Get detailed company profile
+    const profile = await getCompanyProfile(searchResult.company_number);
+    stats.apiCallsMade++;
+    
+    // Add delay between requests
+    await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REQUESTS));
+    
+    if (!profile) {
+      // Update retry count in failed_enrichments
+      if (record.source === 'db') {
+        await supabase
+          .from('failed_enrichments')
+          .update({ retry_count: record.retryCount + 1 })
+          .eq('id', record.dbRecordId);
+      }
+      
+      logToFile(failedLogFile, {
+        companyId: record.id,
+        companyName: record.name,
+        companyNumber: searchResult.company_number,
+        error: 'Failed to fetch company profile after retry',
+        timestamp: new Date().toISOString(),
+        retryCount: record.retryCount + 1,
+      });
+      stats.failed++;
+      return;
+    }
+    
+    // Step 3: Update the company record in Supabase with enriched data
+    // Create a base enrichment object with the fields we know about
+    const enrichedData: Partial<EnrichedCompany> = {
+      company_name: profile.company_name,
+      company_number: profile.company_number,
+      company_status: profile.company_status || null,
+      company_type: profile.type || null,
+      date_of_creation: profile.date_of_creation || null,
+      address: profile.registered_office_address || null,
+      sic_codes: profile.sic_codes || null,
+      raw_json: profile, // Store the entire raw JSON response
+      jurisdiction: profile.jurisdiction || null,
+      accounts_info: profile.accounts || null,
+      confirmation_statement_info: profile.confirmation_statement || null,
+      has_been_liquidated: profile.has_been_liquidated || null,
+      has_charges: profile.has_charges || null,
+      has_insolvency_history: profile.has_insolvency_history || null,
+      registered_office_is_in_dispute: profile.registered_office_is_in_dispute || null,
+      undeliverable_registered_office_address: profile.undeliverable_registered_office_address || null,
+      has_super_secure_pscs: profile.has_super_secure_pscs || null,
+      etag: profile.etag || null,
+      enrichment_date: new Date().toISOString(),
+      additional_fields: {},
+    };
+    
+    // Add any additional fields from the profile that might not be in our schema
+    for (const [key, value] of Object.entries(profile)) {
+      if (!(key in enrichedData) && key !== 'raw_json') {
+        // Store additional fields
+        enrichedData.additional_fields![key] = value;
+      }
+    }
+    
+    const { error: updateError } = await supabase
+      .from('companies')
+      .update(enrichedData)
+      .eq('id', record.id);
+    
+    if (updateError) {
+      // Update retry count in failed_enrichments
+      if (record.source === 'db') {
+        await supabase
+          .from('failed_enrichments')
+          .update({ retry_count: record.retryCount + 1 })
+          .eq('id', record.dbRecordId);
+      }
+      
+      logToFile(failedLogFile, {
+        companyId: record.id,
+        companyName: record.name,
+        error: `Failed to update Supabase: ${updateError.message}`,
+        timestamp: new Date().toISOString(),
+        retryCount: record.retryCount + 1,
+      });
+      stats.failed++;
+      return;
+    }
+    
+    // Log success
+    logToFile(successLogFile, {
+      companyId: record.id,
+      companyName: record.name,
+      companyNumber: profile.company_number,
+      timestamp: new Date().toISOString(),
+      previousRetryCount: record.retryCount,
+    });
+    
+    // Remove from failed_enrichments table if it was from there
+    if (record.source === 'db') {
+      await supabase
+        .from('failed_enrichments')
+        .delete()
+        .eq('id', record.dbRecordId);
+    }
+    
+    stats.successful++;
+    
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    if (errorMessage.includes('Rate limit exceeded')) {
+      // Individual key rate limit, throw to be handled by the batch processor
+      throw error;
+    } else {
+      // Update retry count in failed_enrichments
+      if (record.source === 'db') {
+        await supabase
+          .from('failed_enrichments')
+          .update({ 
+            retry_count: record.retryCount + 1,
+            error_message: `Retry error: ${errorMessage}`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', record.dbRecordId);
+      }
+      
+      logToFile(failedLogFile, {
+        companyId: record.id,
+        companyName: record.name,
+        error: `Unexpected error during retry: ${errorMessage}`,
+        timestamp: new Date().toISOString(),
+        retryCount: record.retryCount + 1,
+      });
+      stats.failed++;
+    }
+  }
+}
+
+// Function to reprocess failed records with concurrency and rate limiting
 async function reprocessFailedRecords() {
   // Get all failed records
   const failedRecords = await collectFailedRecords();
@@ -236,10 +495,6 @@ async function reprocessFailedRecords() {
     apiCallsMade: 0,
   };
   
-  // Track rate limit window
-  let requestCount = 0;
-  let windowStartTime = Date.now();
-  
   // Process in batches with smaller batch size for retries
   const batches = [];
   for (let i = 0; i < failedRecords.length; i += BATCH_SIZE) {
@@ -251,164 +506,100 @@ async function reprocessFailedRecords() {
     logToFile(processLogFile, `Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} records)`);
     console.log(`Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} records)`);
     
-    // Check if we need to reset the rate limit window
-    if (Date.now() - windowStartTime > WINDOW_SIZE) {
-      requestCount = 0;
-      windowStartTime = Date.now();
-      logToFile(processLogFile, 'Rate limit window reset');
+    // Log key usage statistics
+    const keyStats = keyManager.getStats();
+    logToFile(processLogFile, { keyUsageStats: keyStats });
+    console.log('Current key usage:', keyStats.map(k => `${k.key.substring(0, 8)}...: ${k.usagePercent}% (${k.requestCount} calls)`).join(', '));
+    
+    // Check if all keys are approaching their limits
+    if (keyManager.areAllKeysExhausted()) {
+      const waitTime = keyManager.getWaitTimeMs() + 1000; // Add 1s buffer
+      logToFile(processLogFile, `All keys approaching rate limits. Waiting ${waitTime/1000} seconds`);
+      console.log(`All keys approaching rate limits. Waiting ${waitTime/1000} seconds`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
     
-    // Check if we're approaching the rate limit
-    if (requestCount + batch.length * 2 > RATE_LIMIT) { // *2 because we do search + profile
-      const timeToWait = WINDOW_SIZE - (Date.now() - windowStartTime) + 1000; // Add 1s buffer
-      logToFile(processLogFile, `Rate limit approaching: Waiting ${timeToWait/1000} seconds`);
-      console.log(`Rate limit approaching: Waiting ${timeToWait/1000} seconds`);
-      await new Promise(resolve => setTimeout(resolve, timeToWait));
-      requestCount = 0;
-      windowStartTime = Date.now();
-    }
+    // Create a concurrency limiter
+    const limit = pLimit(CONCURRENCY_LIMIT);
     
-    // Process each record in the batch with exponential backoff based on retry count
-    for (const record of batch) {
-      try {
-        // Get the company from Supabase to make sure it still needs enrichment
-        const { data: company, error } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('id', record.id)
-          .is('company_number', null) // Still not enriched
-          .single();
-        
-        if (error || !company) {
-          console.log(`Skipping company ${record.id} - already enriched or not found`);
-          continue;
-        }
-        
-        // Add exponential backoff based on retry count (0.5s, 1s, 2s, 4s, 8s)
-        const backoffDelay = Math.min(8000, 500 * Math.pow(2, record.retryCount));
-        await new Promise(resolve => setTimeout(resolve, backoffDelay));
-        
-        // Step 1: Search for the company
-        const searchResult = await searchCompany(record.name);
-        requestCount++;
-        stats.apiCallsMade++;
-        
-        // Add delay between requests
-        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REQUESTS));
-        
-        if (!searchResult) {
-          await updateRetryCount(record);
-          logToFile(failedLogFile, {
-            companyId: record.id,
-            companyName: record.name,
-            error: 'No search results found',
-            timestamp: new Date().toISOString(),
-            retryCount: record.retryCount + 1,
-          });
-          stats.failed++;
-          continue;
-        }
-        
-        // Step 2: Get detailed company profile
-        const profile = await getCompanyProfile(searchResult.company_number);
-        requestCount++;
-        stats.apiCallsMade++;
-        
-        // Add delay between requests
-        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REQUESTS));
-        
-        if (!profile) {
-          await updateRetryCount(record);
-          logToFile(failedLogFile, {
-            companyId: record.id,
-            companyName: record.name,
-            companyNumber: searchResult.company_number,
-            error: 'Failed to fetch company profile',
-            timestamp: new Date().toISOString(),
-            retryCount: record.retryCount + 1,
-          });
-          stats.failed++;
-          continue;
-        }
-        
-        // Step 3: Update the company record in Supabase with enriched data
-        const enrichedData: Partial<EnrichedCompany> = {
-          company_name: profile.company_name,
-          company_number: profile.company_number,
-          company_status: profile.company_status || null,
-          company_type: profile.type || null,
-          date_of_creation: profile.date_of_creation || null,
-          address: profile.registered_office_address as any || null,
-          sic_codes: profile.sic_codes || null,
-          raw_json: profile,
-          jurisdiction: profile.jurisdiction || null,
-          accounts_info: profile.accounts || null,
-          confirmation_statement_info: profile.confirmation_statement || null,
-          has_been_liquidated: profile.has_been_liquidated || null,
-          has_charges: profile.has_charges || null,
-          has_insolvency_history: profile.has_insolvency_history || null,
-          registered_office_is_in_dispute: profile.registered_office_is_in_dispute || null,
-          undeliverable_registered_office_address: profile.undeliverable_registered_office_address || null,
-          has_super_secure_pscs: profile.has_super_secure_pscs || null,
-          etag: profile.etag || null,
-          enrichment_date: new Date().toISOString(),
-        };
-        
-        const { error: updateError } = await supabase
-          .from('companies')
-          .update(enrichedData)
-          .eq('id', record.id);
-        
-        if (updateError) {
-          await updateRetryCount(record);
-          logToFile(failedLogFile, {
-            companyId: record.id,
-            companyName: record.name,
-            error: `Failed to update Supabase: ${updateError.message}`,
-            timestamp: new Date().toISOString(),
-            retryCount: record.retryCount + 1,
-          });
-          stats.failed++;
-          continue;
-        }
-        
-        // If we got here, the record was successfully reprocessed
-        // Remove it from the failed_enrichments table if it came from there
-        if (record.source === 'db' && record.dbRecordId) {
-          await supabase
-            .from('failed_enrichments')
-            .delete()
-            .eq('id', record.dbRecordId);
-        }
-        
-        // Log success
-        logToFile(successLogFile, {
-          companyId: record.id,
-          companyName: record.name,
-          companyNumber: profile.company_number,
-          timestamp: new Date().toISOString(),
-        });
-        
-        stats.successful++;
-        
-      } catch (error: any) {
-        if (error.message.includes('Rate limit exceeded')) {
-          // Wait for rate limit window to reset
-          const timeToWait = WINDOW_SIZE + 1000; // Full window + 1s buffer
-          logToFile(processLogFile, `Rate limit exceeded: Waiting ${timeToWait/1000} seconds`);
-          console.log(`Rate limit exceeded: Waiting ${timeToWait/1000} seconds`);
-          await new Promise(resolve => setTimeout(resolve, timeToWait));
-          requestCount = 0;
-          windowStartTime = Date.now();
+    // Array to store unprocessed records for retry
+    const retryRecords: FailedRecord[] = [];
+    
+    // Process batch with concurrency
+    await Promise.all(
+      batch.map(record =>
+        limit(() => processFailedRecord(record, stats).catch(error => {
+          // If rate limit error, add to retry array
+          if (error instanceof Error && error.message.includes('Rate limit exceeded')) {
+            logToFile(processLogFile, `Rate limit for one key exceeded when processing ${record.name}, adding to retry queue`);
+            retryRecords.push(record);
+          } else {
+            // Log other unexpected errors
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            
+            // Update retry count in failed_enrichments
+            if (record.source === 'db') {
+              void supabase
+                .from('failed_enrichments')
+                .update({ 
+                  retry_count: record.retryCount + 1,
+                  error_message: `Concurrent processing error: ${errorMessage}`,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', record.dbRecordId);
+            }
+            
+            logToFile(failedLogFile, {
+              companyId: record.id,
+              companyName: record.name,
+              error: `Unexpected error in concurrent processing: ${errorMessage}`,
+              timestamp: new Date().toISOString(),
+              retryCount: record.retryCount + 1,
+            });
+            stats.failed++;
+          }
+        }))
+      )
+    );
+    
+    // If there are records to retry, wait for key refresh and retry them sequentially
+    if (retryRecords.length > 0) {
+      logToFile(processLogFile, `Need to retry ${retryRecords.length} records due to rate limits`);
+      console.log(`Need to retry ${retryRecords.length} records due to rate limits`);
+      
+      // If all keys are exhausted, wait for reset
+      if (keyManager.areAllKeysExhausted()) {
+        const waitTime = keyManager.getWaitTimeMs() + 1000; // Add 1s buffer
+        logToFile(processLogFile, `All keys exhausted before retry. Waiting ${waitTime/1000} seconds`);
+        console.log(`All keys exhausted before retry. Waiting ${waitTime/1000} seconds`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+      
+      // Process retries sequentially with higher delays
+      for (const record of retryRecords) {
+        try {
+          await processFailedRecord(record, stats);
+          // Add extra delay for retries
+          await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_REQUESTS * 2));
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           
-          // Push the record back to the end of this batch to retry
-          batch.push(record);
-        } else {
-          await updateRetryCount(record);
+          // Update retry count in failed_enrichments
+          if (record.source === 'db') {
+            await supabase
+              .from('failed_enrichments')
+              .update({ 
+                retry_count: record.retryCount + 1,
+                error_message: `Retry error: ${errorMessage}`,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', record.dbRecordId);
+          }
+          
           logToFile(failedLogFile, {
             companyId: record.id,
             companyName: record.name,
-            error: `Unexpected error: ${error.message}`,
+            error: `Failed during retry: ${errorMessage}`,
             timestamp: new Date().toISOString(),
             retryCount: record.retryCount + 1,
           });
@@ -418,7 +609,7 @@ async function reprocessFailedRecords() {
     }
     
     // Add a delay between batches
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
   
   // Update statistics and log completion
@@ -427,15 +618,20 @@ async function reprocessFailedRecords() {
   
   const summaryMessage = `
     Reprocessing complete.
-    Total: ${stats.total} records
-    Successful: ${stats.successful} records
-    Failed: ${stats.failed} records
+    Total: ${stats.total} failed records
+    Successfully reprocessed: ${stats.successful} records
+    Failed again: ${stats.failed} records
     API calls made: ${stats.apiCallsMade}
     Duration: ${durationMinutes.toFixed(2)} minutes
   `;
   
   console.log(summaryMessage);
   logToFile(processLogFile, summaryMessage);
+  
+  // Log final key usage
+  const finalKeyStats = keyManager.getStats();
+  logToFile(processLogFile, { finalKeyUsageStats: finalKeyStats });
+  console.log('Final key usage:', finalKeyStats.map(k => `${k.key.substring(0, 8)}...: ${k.usagePercent}% (${k.requestCount} calls)`).join(', '));
   
   // Save detailed report
   const reportFile = path.join(logDir, `reprocessing-report-${currentDate}.json`);
@@ -448,37 +644,24 @@ async function reprocessFailedRecords() {
       apiCallsMade: stats.apiCallsMade,
       durationMs: stats.endTime - stats.startTime,
       durationMinutes: durationMinutes,
+      keyUsage: keyManager.getStats()
     },
-    rateLimitSettings: {
-      batchSize: BATCH_SIZE,
-      rateLimit: RATE_LIMIT,
-      windowSizeMs: WINDOW_SIZE,
-      delayBetweenRequestsMs: DELAY_BETWEEN_REQUESTS,
-    }
+    batchSize: BATCH_SIZE,
+    concurrencyLimit: CONCURRENCY_LIMIT,
+    delayBetweenRequestsMs: DELAY_BETWEEN_REQUESTS,
+    maxRetryCount: MAX_RETRY_COUNT
   }, null, 2));
 }
 
-// Helper function to update retry count for a failed record
-async function updateRetryCount(record: any) {
-  if (record.source === 'db' && record.dbRecordId) {
-    await supabase
-      .from('failed_enrichments')
-      .update({ 
-        retry_count: record.retryCount + 1,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', record.dbRecordId);
-  }
-}
-
-// Execute the reprocessing
+// Execute the main process
 reprocessFailedRecords()
   .then(() => {
-    console.log('Reprocessing completed');
+    console.log('Reprocessing of failed records completed');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Fatal error in reprocessing:', error);
-    logToFile(processLogFile, `Fatal error: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Fatal error in reprocessing:', errorMessage);
+    logToFile(processLogFile, `Fatal error: ${errorMessage}`);
     process.exit(1);
   }); 
