@@ -186,6 +186,24 @@ export class ApiKeyManager {
     const usage = this.usage[key];
     return (usage.count / RATE_LIMIT_PER_KEY) * 100;
   }
+  
+  /**
+   * Manually reset all key usage counters
+   * This is useful after a cool-down period to start with a clean slate
+   */
+  public resetCounters(): void {
+    const now = Date.now();
+    if (DEBUG_LOGGING) {
+      console.log(`[KEY MANAGER] Manually resetting all key usage counters at ${new Date(now).toISOString()}`);
+    }
+    
+    this.keys.forEach(key => {
+      this.usage[key] = {
+        count: 0,
+        windowStart: now
+      };
+    });
+  }
 }
 
 // Singleton instance

@@ -78,10 +78,6 @@ export async function updateEnrichmentJob(
       updateData.total_items = updates.totalItems;
     }
     
-    if (updates.progressPercentage !== undefined) {
-      updateData.progress_percentage = updates.progressPercentage;
-    }
-    
     const { error } = await supabase
       .from('enrichment_jobs')
       .update(updateData)
