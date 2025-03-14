@@ -121,23 +121,42 @@ const FailedEnrichmentsTab: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="govuk-table">
-              <thead className="govuk-table__head">
-                <tr className="govuk-table__row">
-                  <th className="govuk-table__header">Company Name</th>
-                  <th className="govuk-table__header">Retry Count</th>
-                  <th className="govuk-table__header">Last Error</th>
-                  <th className="govuk-table__header">Last Attempt</th>
+          <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+            <table className="w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Company Name
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Retry Count
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Last Error
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Last Attempt
+                  </th>
                 </tr>
               </thead>
-              <tbody className="govuk-table__body">
-                {failedItems.map((item) => (
-                  <tr key={item.id} className="govuk-table__row">
-                    <td className="govuk-table__cell">{item.company_name}</td>
-                    <td className="govuk-table__cell">{item.retry_count}</td>
-                    <td className="govuk-table__cell">{item.last_error?.substring(0, 50)}...</td>
-                    <td className="govuk-table__cell">{new Date(item.updated_at).toLocaleString()}</td>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {failedItems.map((item, index) => (
+                  <tr 
+                    key={item.id} 
+                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors duration-150 ease-in-out`}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {item.company_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.retry_count}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                      {item.last_error?.substring(0, 50)}...
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(item.updated_at).toLocaleString()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -145,18 +164,20 @@ const FailedEnrichmentsTab: React.FC = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex justify-center mt-4">
-              <div className="flex items-center space-x-2">
+            <div className="flex justify-center mt-6">
+              <div className="inline-flex rounded-md shadow-sm">
                 <button
-                  className="govuk-button govuk-button--secondary"
+                  className="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={page === 1}
                   onClick={() => setPage(page - 1)}
                 >
                   Previous
                 </button>
-                <span>Page {page} of {totalPages}</span>
+                <span className="relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 bg-white text-sm font-medium text-gray-700">
+                  Page {page} of {totalPages}
+                </span>
                 <button
-                  className="govuk-button govuk-button--secondary"
+                  className="relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={page === totalPages}
                   onClick={() => setPage(page + 1)}
                 >
@@ -244,23 +265,42 @@ const RemainingItemsTab: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="govuk-table">
-              <thead className="govuk-table__head">
-                <tr className="govuk-table__row">
-                  <th className="govuk-table__header">Company Name</th>
-                  <th className="govuk-table__header">Town/City</th>
-                  <th className="govuk-table__header">County</th>
-                  <th className="govuk-table__header">Type & Rating</th>
+          <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+            <table className="w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Company Name
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Town/City
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    County
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type & Rating
+                  </th>
                 </tr>
               </thead>
-              <tbody className="govuk-table__body">
-                {remainingItems.map((item) => (
-                  <tr key={item.id} className="govuk-table__row">
-                    <td className="govuk-table__cell">{item.original_name}</td>
-                    <td className="govuk-table__cell">{item.town_city || '-'}</td>
-                    <td className="govuk-table__cell">{item.county || '-'}</td>
-                    <td className="govuk-table__cell">{item.type_rating || '-'}</td>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {remainingItems.map((item, index) => (
+                  <tr 
+                    key={item.id} 
+                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors duration-150 ease-in-out`}
+                  >
+                    <td className="px-6 py-4 whitespace-normal text-sm font-medium text-gray-900">
+                      {item.original_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.town_city || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.county || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.type_rating || '-'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -268,18 +308,20 @@ const RemainingItemsTab: React.FC = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex justify-center mt-4">
-              <div className="flex items-center space-x-2">
+            <div className="flex justify-center mt-6">
+              <div className="inline-flex rounded-md shadow-sm">
                 <button
-                  className="govuk-button govuk-button--secondary"
+                  className="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={page === 1}
                   onClick={() => setPage(page - 1)}
                 >
                   Previous
                 </button>
-                <span>Page {page} of {totalPages}</span>
+                <span className="relative inline-flex items-center px-4 py-2 border-t border-b border-gray-300 bg-white text-sm font-medium text-gray-700">
+                  Page {page} of {totalPages}
+                </span>
                 <button
-                  className="govuk-button govuk-button--secondary"
+                  className="relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={page === totalPages}
                   onClick={() => setPage(page + 1)}
                 >
