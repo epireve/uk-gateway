@@ -485,6 +485,8 @@ export async function getActiveEnrichmentJob(): Promise<{
   started_at: string | null;
   items_processed: number;
   items_failed: number;
+  total_items: number | null;
+  progress_percentage: number | null;
 } | null> {
   try {
     const { data, error } = await supabase

@@ -39,6 +39,8 @@ export async function updateEnrichmentJob(
     startedAt?: boolean;
     completedAt?: boolean;
     metadata?: Record<string, unknown>;
+    totalItems?: number;
+    progressPercentage?: number;
   }
 ): Promise<boolean> {
   try {
@@ -70,6 +72,14 @@ export async function updateEnrichmentJob(
     
     if (updates.metadata) {
       updateData.metadata = updates.metadata;
+    }
+    
+    if (updates.totalItems !== undefined) {
+      updateData.total_items = updates.totalItems;
+    }
+    
+    if (updates.progressPercentage !== undefined) {
+      updateData.progress_percentage = updates.progressPercentage;
     }
     
     const { error } = await supabase

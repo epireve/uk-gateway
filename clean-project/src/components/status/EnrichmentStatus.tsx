@@ -26,19 +26,34 @@ interface ActiveEnrichmentJob {
   started_at: string | null;
   items_processed: number;
   items_failed: number;
+  total_items: number | null;
+  progress_percentage: number | null;
 }
 
-const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats }) => {
+const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats: initialStats }) => {
   const [showLogs, setShowLogs] = useState(false);
   const [logs, setLogs] = useState<EnrichmentLogEntry[]>([]);
   const [hasMoreLogs, setHasMoreLogs] = useState(false);
   const [activeJob, setActiveJob] = useState<ActiveEnrichmentJob | null>(null);
   const [loading, setLoading] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [stats, setStats] = useState<StatsData>(initialStats);
+
+  // Function to fetch stats
+  const fetchStats = async () => {
+    try {
+      const freshStats = await getEnrichmentStats();
+      setStats(freshStats);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
   // Function to fetch logs and job status
   const fetchLogsAndJobStatus = async () => {
     try {
+      setLoading(true);
+      
       // Get active job
       const job = await getActiveEnrichmentJob();
       setActiveJob(job);
@@ -51,6 +66,8 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats }) => {
       // If we have an active job, show logs automatically
       if (job) {
         setShowLogs(true);
+        // Also refresh stats when there's an active job
+        await fetchStats();
       }
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -138,6 +155,11 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats }) => {
           <p className="mb-2">
             <span className="font-medium">Started:</span> {activeJob.started_at ? new Date(activeJob.started_at).toLocaleString() : 'Not started yet'}
           </p>
+          {activeJob.total_items !== null && activeJob.total_items > 0 && (
+            <p className="mb-2">
+              <span className="font-medium">Total Items:</span> {activeJob.total_items}
+            </p>
+          )}
           {activeJob.items_processed > 0 && (
             <p className="mb-2">
               <span className="font-medium">Items Processed:</span> {activeJob.items_processed}
@@ -147,6 +169,19 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats }) => {
             <p className="mb-2">
               <span className="font-medium">Items Failed:</span> {activeJob.items_failed}
             </p>
+          )}
+          
+          {/* Add progress bar for active job */}
+          {activeJob.progress_percentage !== null && activeJob.progress_percentage > 0 && (
+            <div className="mt-4">
+              <div className="w-full bg-blue-100 rounded-full h-2.5 mb-1">
+                <div 
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
+                  style={{ width: `${activeJob.progress_percentage}%` }}
+                ></div>
+              </div>
+              <p className="text-sm text-right text-blue-700">{activeJob.progress_percentage}% Complete</p>
+            </div>
           )}
         </div>
       )}
@@ -169,6 +204,15 @@ const EnrichmentOverview: React.FC<{ stats: StatsData }> = ({ stats }) => {
             Refresh Logs
           </button>
         )}
+        
+        {/* Add a separate button to refresh stats */}
+        <button 
+          onClick={fetchStats} 
+          className="govuk-button govuk-button--secondary ml-2"
+          disabled={loading}
+        >
+          Refresh Stats
+        </button>
       </div>
       
       {/* Logs Display */}

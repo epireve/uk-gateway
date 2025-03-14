@@ -347,7 +347,9 @@ async function processCompaniesWithConcurrency() {
   if (activeJobId) {
     await logEnrichmentProcess(foundCompaniesMsg, 'info', activeJobId);
     await updateEnrichmentJob(activeJobId, {
-      status: 'processing'
+      status: 'processing',
+      totalItems: companies.length,
+      progressPercentage: 0
     });
   }
 
@@ -360,6 +362,7 @@ async function processCompaniesWithConcurrency() {
     endTime: 0,
     apiCallsMade: 0,
     supabaseUpdates: 0,
+    lastStatUpdate: Date.now() // Track when we last updated stats
   };
 
   // Process with optimal concurrency based on available keys
@@ -514,6 +517,23 @@ async function processCompaniesWithConcurrency() {
   
   console.log(summaryMessage);
   logToFile(processLogFile, summaryMessage);
+  
+  // Final update to the job with complete stats
+  if (activeJobId) {
+    await updateEnrichmentJob(activeJobId, {
+      status: 'completed',
+      itemsProcessed: stats.successful,
+      itemsFailed: stats.failed,
+      progressPercentage: 100,
+      result: `Completed: ${stats.successful} enriched, ${stats.failed} failed, in ${durationMinutes.toFixed(2)} minutes`,
+      completedAt: true,
+      metadata: {
+        durationMinutes,
+        apiCallsMade: stats.apiCallsMade,
+        keyUsage: keyManager.getStats()
+      }
+    });
+  }
   
   // Log final key usage
   const finalKeyStats = keyManager.getStats();
@@ -679,6 +699,10 @@ async function processCompany(company: Record<string, unknown>, stats: {
   failed: number;
   apiCallsMade: number;
   supabaseUpdates?: number;
+  total: number;
+  lastStatUpdate: number;
+  startTime: number;
+  endTime: number;
 }) {
   try {
     // Log which company we're processing
@@ -820,12 +844,28 @@ async function processCompany(company: Record<string, unknown>, stats: {
     
     // Update successful count in database job
     if (activeJobId) {
-      await updateEnrichmentJob(activeJobId, {
-        itemsProcessed: stats.successful + 1
-      });
+      stats.successful++;
+      
+      // Only update the database every 5 companies or after 10 seconds to avoid too many updates
+      const shouldUpdate = 
+        stats.successful % 5 === 0 || // Every 5 companies
+        (Date.now() - stats.lastStatUpdate) > 10000; // Or every 10 seconds
+        
+      if (shouldUpdate) {
+        await updateEnrichmentJob(activeJobId, {
+          itemsProcessed: stats.successful,
+          itemsFailed: stats.failed,
+          progressPercentage: Math.round((stats.successful + stats.failed) / stats.total * 100)
+        });
+        stats.lastStatUpdate = Date.now();
+        
+        // Log a status update
+        const progressMsg = `Progress: ${stats.successful} successful, ${stats.failed} failed (${Math.round((stats.successful + stats.failed) / stats.total * 100)}% complete)`;
+        await logEnrichmentProcess(progressMsg, 'info', activeJobId);
+      }
+    } else {
+      stats.successful++;
     }
-    
-    stats.successful++;
     
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -852,6 +892,8 @@ async function processCompany(company: Record<string, unknown>, stats: {
       }
       
       stats.failed++;
+      
+      // Only update the database periodically to avoid too many updates
     }
   }
 }
